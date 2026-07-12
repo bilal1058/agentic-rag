@@ -1,0 +1,5 @@
+question,answer
+What is LangChain?,LangChain is a framework for building applications powered by large language models.
+What is a vector store?,A vector store stores text embeddings so retrieval can find semantically similar chunks.
+What does RAG stand for?,Retrieval-Augmented Generation.
+What is a document loader?,A document loader converts raw files like PDFs or markdown into Document objects.
