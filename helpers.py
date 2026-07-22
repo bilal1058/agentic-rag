@@ -23,8 +23,8 @@ SESSIONS_DIR = ROOT / "sessions"
 SESSIONS_DIR.mkdir(exist_ok=True)
 
 # Rate Limiter settings
-MAX_REQUESTS = 8        # allowed prompts...
-WINDOW_SECONDS = 60     # ...per rolling window per session
+MAX_REQUESTS = 10        # allowed prompts...
+WINDOW_SECONDS = 3600    # ...per 1-hour rolling window per session
 _history: dict[str, list[float]] = defaultdict(list)
 
 
@@ -43,6 +43,18 @@ def background_data_url() -> str:
 def esc(value: object) -> str:
     """HTML-escape a value for safe embedding in HTML."""
     return html.escape(str(value), quote=True)
+
+
+def format_seconds_human(seconds: float) -> str:
+    """Format seconds into human readable duration (seconds, minutes, or hours)."""
+    sec = int(round(seconds))
+    if sec < 60:
+        return f"{sec} second{'s' if sec != 1 else ''}"
+    mins = int(round(sec / 60))
+    if mins < 60:
+        return f"{mins} minute{'s' if mins != 1 else ''}"
+    hours = int(round(mins / 60))
+    return f"{hours} hour{'s' if hours != 1 else ''}"
 
 
 def human_time(value: str) -> str:
@@ -319,9 +331,25 @@ def conversation_history() -> list[dict]:
     return sorted(conversations, key=lambda item: item["updated"], reverse=True)
 
 
-# ---------------------------------------------------------------------------
-# Rate Limiting Helpers
-# ---------------------------------------------------------------------------
+def get_client_id() -> str:
+    """Return a unique client identifier (IP address or fallback key) for global rate limiting across reloads."""
+    try:
+        from streamlit.web.server.websocket_headers import _get_websocket_headers
+        headers = _get_websocket_headers()
+        if headers:
+            xfwd = headers.get("X-Forwarded-For") or headers.get("x-forwarded-for")
+            if xfwd:
+                return xfwd.split(",")[0].strip()
+            remote_addr = headers.get("Remote-Addr") or headers.get("remote-addr")
+            if remote_addr:
+                return remote_addr.strip()
+            host = headers.get("Host") or headers.get("host")
+            if host:
+                return host.strip()
+    except Exception:
+        pass
+    return "global_user_default"
+
 
 def _prune_rate_limit(session_id: str, now: float) -> None:
     cutoff = now - WINDOW_SECONDS
@@ -346,6 +374,18 @@ def rate_limit_remaining(session_id: str) -> int:
     """Return remaining allowed prompts in the current window."""
     _prune_rate_limit(session_id, time.monotonic())
     return max(0, MAX_REQUESTS - len(_history[session_id]))
+
+
+def rate_limit_status(session_id: str) -> tuple[int, int, int]:
+    """Return (used, remaining, reset_minutes) for 1-hour window."""
+    now = time.monotonic()
+    _prune_rate_limit(session_id, now)
+    timestamps = _history[session_id]
+    used = len(timestamps)
+    remaining = max(0, MAX_REQUESTS - used)
+    reset_sec = (WINDOW_SECONDS - (now - timestamps[0])) if timestamps else 0.0
+    reset_min = int(max(1, round(reset_sec / 60))) if reset_sec > 0 else 0
+    return used, remaining, reset_min
 
 
 def reset_rate_limit(session_id: str) -> None:

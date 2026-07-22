@@ -28,6 +28,9 @@ from helpers import (
     conversation_history,
     check_rate_limit,
     reset_rate_limit,
+    rate_limit_status,
+    format_seconds_human,
+    get_client_id,
 )
 from rag_engine import process_uploaded_files, process_url
 from rag_agent import run_agent_pipeline
@@ -43,17 +46,28 @@ def _save() -> None:
     )
 
 
-def stream_text(text: str, metadata: dict, placeholder) -> None:
-    """Stream the assistant response to the UI word by word."""
+def stream_text(text: str, metadata: dict, placeholder) -> str:
+    """Stream the assistant response to the UI word by word and return partial or full text."""
     words = text.split(" ")
     current_text = ""
     for i, word in enumerate(words):
+        if st.session_state.get("stop_requested"):
+            if current_text:
+                current_text += " \u23f9\ufe0f *[Response stopped by user]*"
+            else:
+                current_text = "\u23f9\ufe0f *[Response stopped by user]*"
+            placeholder.markdown(
+                build_assistant_html(current_text, metadata),
+                unsafe_allow_html=True,
+            )
+            return current_text
         current_text += (word if i == 0 else " " + word)
         placeholder.markdown(
             build_assistant_html(current_text, metadata),
             unsafe_allow_html=True,
         )
         time.sleep(0.012)
+    return current_text
 
 
 st.set_page_config(
@@ -366,6 +380,43 @@ section[data-testid="stSidebar"] .stButton > button:active {{ transform:scale(.9
 .ragas-badge b {{ font-size:13px; }}
 div[data-testid="stButton"] > button {{ background:rgba(255,115,0,.1)!important; border:1px solid rgba(255,115,0,.3)!important; border-radius:999px!important; color:#d4d4d8!important; font-size:12px!important; padding:4px 14px!important; transition:all .2s ease!important; }}
 div[data-testid="stButton"] > button:hover {{ background:rgba(255,115,0,.2)!important; border-color:rgba(255,115,0,.5)!important; color:#fff!important; }}
+.sidebar-quota-card {{ margin:18px 4px 14px; padding:12px 14px; border:1px solid rgba(255,115,0,.25); border-radius:12px; background:rgba(255,100,0,.06); box-shadow:0 4px 16px rgba(0,0,0,.2); }}
+.quota-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }}
+.quota-title {{ color:#ff7a00; font-size:12px; font-weight:600; display:flex; align-items:center; gap:4px; }}
+.quota-count {{ color:#f4f4f5; font-size:12px; font-weight:700; }}
+.quota-progress-bar {{ height:6px; border-radius:999px; background:rgba(255,255,255,.1); overflow:hidden; }}
+.quota-progress-fill {{ height:100%; background:linear-gradient(90deg,#ff4d00,#ff8a00); border-radius:999px; transition:width .3s ease; }}
+.quota-subtext {{ color:#a1a1aa; font-size:11px; margin-top:6px; }}
+[data-testid="stElementContainer"]:has(button[aria-label*="HIDDEN_"]),
+button[aria-label*="HIDDEN_"],
+div:has(> button[aria-label*="HIDDEN_"]) {{
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: auto !important;
+  z-index: -9999 !important;
+}}
+body[data-is-processing="true"] [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] {{
+  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.6) !important;
+}}
+body[data-is-processing="true"] [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] svg {{
+  display: none !important;
+}}
+body[data-is-processing="true"] [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"]::after {{
+  content: "⏹" !important;
+  font-size: 14px !important;
+  color: white !important;
+  font-weight: bold !important;
+  line-height: 1 !important;
+}}
 [data-testid="stBottom"], [data-testid="stBottom"] > div, [data-testid="stBottomBlockContainer"],
 [data-testid="stBottomBlockContainer"] > div {{
   background:transparent!important; box-shadow:none!important;
@@ -472,6 +523,86 @@ a.anchor-link {{ display: none !important; visibility: hidden !important; }}
     unsafe_allow_html=True,
 )
 
+is_proc_js = "true" if st.session_state.get("processing") else "false"
+st.html(
+    f"""
+    <script>
+    (function() {{
+        document.body.dataset.isProcessing = "{is_proc_js}";
+
+        function hideHiddenButtons() {{
+            const btns = document.querySelectorAll('button');
+            btns.forEach(btn => {{
+                const txt = (btn.textContent || '').trim();
+                const label = btn.getAttribute('aria-label') || '';
+                if (txt.includes('HIDDEN_') || label.includes('HIDDEN_')) {{
+                    const container = btn.closest('[data-testid="stElementContainer"]') || btn.closest('[data-testid="stButton"]') || btn;
+                    if (container) {{
+                        container.style.setProperty('position', 'fixed', 'important');
+                        container.style.setProperty('top', '-9999px', 'important');
+                        container.style.setProperty('left', '-9999px', 'important');
+                        container.style.setProperty('width', '1px', 'important');
+                        container.style.setProperty('height', '1px', 'important');
+                        container.style.setProperty('opacity', '0', 'important');
+                        container.style.setProperty('overflow', 'hidden', 'important');
+                        container.style.setProperty('z-index', '-9999', 'important');
+                    }}
+                    btn.style.setProperty('pointer-events', 'auto', 'important');
+                    btn.disabled = false;
+                }}
+            }});
+        }}
+        hideHiddenButtons();
+
+        if (!window.__hiddenBtnObserver) {{
+            window.__hiddenBtnObserver = new MutationObserver(hideHiddenButtons);
+            window.__hiddenBtnObserver.observe(document.body, {{ childList: true, subtree: true }});
+        }}
+
+        if (!window.__chatInputListenersAttached) {{
+            window.__chatInputListenersAttached = true;
+
+            document.addEventListener('keydown', function(e) {{
+                if (document.body.dataset.isProcessing === "true") {{
+                    const target = e.target;
+                    if (target && target.tagName === 'TEXTAREA' && target.closest('[data-testid="stChatInput"]')) {{
+                        if (e.key === 'Enter' && !e.shiftKey) {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        }}
+                    }}
+                }}
+            }}, true);
+
+            document.addEventListener('click', function(e) {{
+                if (document.body.dataset.isProcessing === "true") {{
+                    const btn = e.target.closest('[data-testid="stChatInputSubmitButton"]');
+                    if (btn) {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const allBtns = Array.from(document.querySelectorAll('button'));
+                        const stopBtn = allBtns.find(b => {{
+                            const txt = (b.textContent || '').trim();
+                            const label = b.getAttribute('aria-label') || '';
+                            return txt.includes('HIDDEN_STOP_ACTION') || label.includes('HIDDEN_STOP_ACTION');
+                        }});
+                        if (stopBtn) {{
+                            stopBtn.disabled = false;
+                            stopBtn.style.setProperty('pointer-events', 'auto', 'important');
+                            stopBtn.click();
+                        }}
+                        return false;
+                    }}
+                }}
+            }}, true);
+        }}
+    }})();
+    </script>
+    """,
+    unsafe_allow_javascript=True,
+)
+
 if "delete_session" in st.query_params:
     del_id = st.query_params["delete_session"]
     delete_session(del_id)
@@ -533,7 +664,6 @@ def show_delete_dialog():
     with c2:
         if st.button("Delete", key="confirm_del", use_container_width=True, type="primary"):
             delete_session(del_id)
-            reset_rate_limit(del_id)
             st.session_state.delete_confirm = None
             if del_id == st.session_state.session_id:
                 new_chat()
@@ -589,9 +719,14 @@ with st.sidebar:
             function initChatCardListeners() {
                 document.querySelectorAll('button').forEach(btn => {
                     const t = btn.textContent;
-                    if (t.startsWith('HIDDEN_SEL_') || t.startsWith('HIDDEN_DEL_')) {
-                        const el = btn.closest('[data-testid="stButton"]');
-                        if (el) el.style.display = 'none';
+                    if (t.startsWith('HIDDEN_SEL_') || t.startsWith('HIDDEN_DEL_') || t.startsWith('HIDDEN_STOP_ACTION') || t.includes('HIDDEN_STOP_ACTION')) {
+                        const el = btn.closest('[data-testid="stElementContainer"]') || btn.closest('[data-testid="stButton"]');
+                        if (el) {
+                            el.style.display = 'none';
+                            el.style.height = '0px';
+                            el.style.margin = '0px';
+                            el.style.padding = '0px';
+                        }
                     }
                 });
                 const container = document.querySelector('.chat-history-list');
@@ -629,6 +764,25 @@ with st.sidebar:
         )
     else:
         st.markdown('<div class="empty-history">No saved conversations yet.</div>', unsafe_allow_html=True)
+
+    used, remaining, reset_min = rate_limit_status(get_client_id())
+    pct = int((remaining / 10) * 100)
+    subtext = f"Resets in {reset_min} min" if remaining < 10 else "10 requests / 1 hour limit"
+    st.markdown(
+        f'''
+        <div class="sidebar-quota-card">
+          <div class="quota-header">
+            <span class="quota-title">⚡ Session Quota</span>
+            <span class="quota-count">{remaining} / 10 Left</span>
+          </div>
+          <div class="quota-progress-bar">
+            <div class="quota-progress-fill" style="width: {pct}%;"></div>
+          </div>
+          <div class="quota-subtext">{subtext}</div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
 
     st.markdown('<div class="profile"><div class="profile-avatar">MB</div><div><div style="font-size:13px;font-weight:600;">Muhammad Bilal</div><div style="font-size:11px;color:#71717a;">mbilal@example.com</div></div></div>', unsafe_allow_html=True)
 
@@ -748,6 +902,22 @@ user_input = st.chat_input(
 )
 
 if user_input:
+    if st.session_state.get("processing"):
+        st.session_state.stop_requested = True
+        st.session_state.processing = None
+        if st.session_state.messages:
+            if st.session_state.messages[-1].get("role") == "user":
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "\u23f9\ufe0f *[Response stopped by user]*",
+                    "metadata": {}
+                })
+            elif st.session_state.messages[-1].get("role") == "assistant":
+                content = st.session_state.messages[-1].get("content", "")
+                if "\u23f9\ufe0f *[Response stopped by user]*" not in content:
+                    st.session_state.messages[-1]["content"] = content.strip() + " \u23f9\ufe0f *[Response stopped by user]*"
+        _save()
+        st.rerun()
     uploaded = []
     for file in user_input.files or []:
         uploaded.append({"name": file.name, "type": Path(file.name).suffix.lstrip(".").upper() or "FILE", "size": format_file_size(file.size)})
@@ -758,17 +928,19 @@ if user_input:
     if prompt or uploaded:
         # Rate-limit only actual questions (prompts), not pure uploads.
         if prompt:
-            allowed, retry_after = check_rate_limit(st.session_state.session_id)
+            allowed, retry_after = check_rate_limit(get_client_id())
             if not allowed:
+                time_str = format_seconds_human(retry_after)
                 st.toast(
                     f"⏳ You're sending questions too quickly. "
-                    f"Please wait {int(retry_after)}s and try again.",
+                    f"Please wait {time_str} and try again.",
                     icon="⏳",
                 )
                 st.stop()
         st.session_state.messages.append(
             {"role": "user", "content": prompt, "files": uploaded, "timestamp": datetime.now().strftime("%I:%M %p").lstrip("0")}
         )
+        st.session_state.stop_requested = False
         st.session_state.processing = {"files": user_input.files, "prompt": prompt, "url": pending_url}
         _save()
         st.rerun()
@@ -778,6 +950,24 @@ if st.session_state.get("processing"):
     import asyncio
 
     task = st.session_state.processing
+
+    if st.button("HIDDEN_STOP_ACTION", key="hidden_stop_action_btn"):
+        st.session_state.stop_requested = True
+        st.session_state.processing = None
+        if st.session_state.messages:
+            if st.session_state.messages[-1].get("role") == "user":
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "\u23f9\ufe0f *[Response stopped by user]*",
+                    "metadata": {}
+                })
+            elif st.session_state.messages[-1].get("role") == "assistant":
+                content = st.session_state.messages[-1].get("content", "")
+                if "\u23f9\ufe0f *[Response stopped by user]*" not in content:
+                    st.session_state.messages[-1]["content"] = content.strip() + " \u23f9\ufe0f *[Response stopped by user]*"
+        _save()
+        st.rerun()
+
     status = st.empty()
 
     # Pre-render initial status bar INSTANTLY (0ms) so user never sees a blank gap
@@ -846,13 +1036,15 @@ if st.session_state.get("processing"):
             ))
 
             status.empty()
-            stream_text(answer, metadata, streaming_placeholder)
-            st.session_state.messages.append({"role": "assistant", "content": answer, "metadata": metadata})
+            if not st.session_state.get("stop_requested"):
+                partial_answer = stream_text(answer, metadata, streaming_placeholder)
+                st.session_state.messages.append({"role": "assistant", "content": partial_answer, "metadata": metadata})
         elif task.get("files") or task.get("url"):
             status.empty()
             notice = "Your document has been indexed. What would you like to know about it?"
-            stream_text(notice, {}, streaming_placeholder)
-            st.session_state.messages.append({"role": "assistant", "content": notice, "metadata": {}})
+            if not st.session_state.get("stop_requested"):
+                partial_notice = stream_text(notice, {}, streaming_placeholder)
+                st.session_state.messages.append({"role": "assistant", "content": partial_notice, "metadata": {}})
     except Exception as exc:
         status.empty()
         st.session_state.messages.append({"role": "assistant", "content": f"I ran into an error while processing that request: {exc}", "metadata": {}})

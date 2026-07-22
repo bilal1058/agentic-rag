@@ -55,15 +55,20 @@ async def _invoke_with_backoff(llm, messages, tools=None, max_retries=3):
             return await llm.ainvoke(messages)
         except Exception as e:
             last_exc = e
-            if _is_rate_limit_error(e) and attempt < max_retries - 1:
-                wait = _retry_after_seconds(e, delay) + random.uniform(0, 0.5)
-                logger.warning(
-                    "Groq 429 — backing off %.1fs (attempt %d/%d)",
-                    wait, attempt + 1, max_retries,
-                )
-                await asyncio.sleep(wait)
-                delay *= 2
-                continue
+            if _is_rate_limit_error(e):
+                fallback = _get_fallback_llm()
+                if fallback:
+                    logger.warning("Groq rate limit (429) hit. Escalating immediately to OpenRouter fallback LLM.")
+                    raise
+                if attempt < max_retries - 1:
+                    wait = min(_retry_after_seconds(e, delay), 2.0) + random.uniform(0, 0.2)
+                    logger.warning(
+                        "Groq 429 — backing off %.1fs (attempt %d/%d)",
+                        wait, attempt + 1, max_retries,
+                    )
+                    await asyncio.sleep(wait)
+                    delay *= 2
+                    continue
             raise
     raise last_exc
 
@@ -71,26 +76,26 @@ async def _invoke_with_backoff(llm, messages, tools=None, max_retries=3):
 _fallback_llm = None
 
 
-def _get_fallback_llm():
-    global _fallback_llm
-    if _fallback_llm is None:
-        api_key = os.environ.get("OPENROUTER_API_KEY")
-        if not api_key:
-            dotenv_path = Path(__file__).parent / ".env"
-            if dotenv_path.exists():
-                from dotenv import load_dotenv
-                load_dotenv(dotenv_path=dotenv_path)
-                api_key = os.environ.get("OPENROUTER_API_KEY")
-        if api_key:
-            from langchain_openai import ChatOpenAI
-            _fallback_llm = ChatOpenAI(
-                model=os.environ.get("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"),
-                api_key=api_key,
-                base_url="https://openrouter.ai/api/v1",
-                temperature=0.0,
-            )
-            logger.info("Fallback LLM (OpenRouter) initialized")
-    return _fallback_llm
+def _get_fallback_llm(model_override: str | None = None):
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        dotenv_path = Path(__file__).parent / ".env"
+        if dotenv_path.exists():
+            from dotenv import load_dotenv
+            load_dotenv(dotenv_path=dotenv_path)
+            api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        return None
+    from langchain_openai import ChatOpenAI
+    model_name = model_override or os.environ.get("OPENROUTER_MODEL", "nvidia/nemotron-nano-9b-v2:free")
+    return ChatOpenAI(
+        model=model_name,
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1",
+        temperature=0.0,
+        max_tokens=1024,
+        request_timeout=10.0,
+    )
 
 
 async def _invoke_llm(primary_llm, messages, tools=None):
@@ -98,26 +103,23 @@ async def _invoke_llm(primary_llm, messages, tools=None):
     try:
         return await _invoke_with_backoff(primary_llm, messages, tools=tools)
     except Exception as e:
-        if _is_rate_limit_error(e):
-            logger.warning("Groq rate limit hit (429), switching to OpenRouter: %s", e)
-        else:
-            logger.warning("Primary LLM failed (%s), falling back to OpenRouter: %s", type(e).__name__, e)
-        fallback = _get_fallback_llm()
-        if fallback:
-            try:
-                if tools:
-                    return await fallback.bind_tools(tools).ainvoke(messages)
-                return await fallback.ainvoke(messages)
-            except Exception as fallback_err:
-                if tools:
-                    logger.warning(
-                        "Fallback LLM tool calling failed, retrying without tools: %s",
-                        fallback_err,
-                    )
+        logger.warning("Primary LLM failed or rate-limited (%s): %s. Switching to OpenRouter fallback.", type(e).__name__, e)
+        fallback_models = ["nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-26b-a4b-it:free"]
+        for fallback_model in fallback_models:
+            fallback = _get_fallback_llm(model_override=fallback_model)
+            if fallback:
+                try:
+                    if tools:
+                        return await fallback.bind_tools(tools).ainvoke(messages)
                     return await fallback.ainvoke(messages)
-                raise
-        logger.warning("No fallback LLM configured, re-raising original error")
-        raise
+                except Exception as fallback_err:
+                    logger.warning("Fallback model %s failed: %s", fallback_model, fallback_err)
+                    if tools:
+                        try:
+                            return await fallback.ainvoke(messages)
+                        except Exception:
+                            pass
+        return AIMessage(content="I am currently experiencing high API rate limits. Please try asking your question again in a moment.")
 
 # ---------------------------------------------------------------------------
 # System prompts
@@ -185,14 +187,18 @@ class AgentState(TypedDict):
     context_used: str
 
 
-def _to_langchain_messages(messages):
+def _to_langchain_messages(messages, max_turns: int = 6):
+    """Convert dict or BaseMessage list to LangChain message objects, capping history to recent turns."""
+    recent_messages = messages[-max_turns:] if len(messages) > max_turns else messages
     converted = []
-    for msg in messages:
+    for msg in recent_messages:
         if isinstance(msg, BaseMessage):
             converted.append(msg)
         elif isinstance(msg, dict):
             role = msg.get("role", "user")
             content = msg.get("content", "")
+            if role == "assistant" and len(content) > 600:
+                content = content[:500] + "\n... [prior response condensed for speed]"
             if role == "system":
                 converted.append(SystemMessage(content=content))
             elif role == "assistant":
@@ -264,6 +270,8 @@ async def check_input(state: AgentState) -> dict:
         "summarize", "explain", "what", "how", "who", "when", "where",
         "tell me", "describe", "list", "define", "compare", "analyze",
         "hello", "hi", "hey", "thanks", "thank you", "yes", "no",
+        "i am", "i'm", "im ", "fine", "good", "ok", "okay", "cool", "great",
+        "nice", "how are you", "what's up", "doing well",
     ]
     _suspicious_keywords = [
         "ignore", "disregard", "forget", "override", "bypass", "jailbreak",
@@ -274,9 +282,9 @@ async def check_input(state: AgentState) -> dict:
         "output your", "api key", "password", "secret",
     ]
     lower_text = user_text.lower()
-    is_harmless = any(lower_text.startswith(p) for p in _harmless_patterns)
+    is_harmless = any(p in lower_text for p in _harmless_patterns) or len(user_text) < 150
     is_suspicious = any(kw in lower_text for kw in _suspicious_keywords)
-    if is_harmless and not is_suspicious and len(user_text) < 200:
+    if is_harmless and not is_suspicious and len(user_text) < 300:
         return {"blocked_reason": None}
 
     rails = _get_rails()
@@ -339,9 +347,11 @@ def build_agent_graph(vector_store, session_dir: str = ""):
         search_tool = create_hybrid_retriever_tool(vector_store, session_dir)
 
     llm = ChatGroq(
-        model=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
         api_key=os.environ.get("GROQ_API_KEY"),
         temperature=0.0,
+        request_timeout=8.0,
+        max_tokens=1024,
     )
 
     # ---- Nodes ----
@@ -349,6 +359,45 @@ def build_agent_graph(vector_store, session_dir: str = ""):
     async def agent_decision(state: AgentState):
         calls = state.get("model_call_count", 0) + 1
         _update_streamlit_state("last_model_calls", calls)
+
+        # Check for casual chat / greetings
+        user_text = ""
+        for msg in reversed(state["messages"]):
+            if isinstance(msg, HumanMessage) and msg.content:
+                user_text = msg.content
+                break
+            elif isinstance(msg, dict) and msg.get("role") == "user" and msg.get("content"):
+                user_text = msg["content"]
+                break
+
+        clean_user = user_text.strip().lower().rstrip(".!?,")
+        casual_phrases = {
+            "hi", "hello", "hey", "i am fine", "i'm fine", "im fine", "i am good", "i'm good", "im good",
+            "fine", "good", "ok", "okay", "cool", "great", "thanks", "thank you", "how are you",
+            "what's up", "doing well", "nice to meet you", "good morning", "good evening", "good afternoon",
+            "who are you", "what can you do", "help",
+        }
+        is_casual = clean_user in casual_phrases or (
+            len(clean_user) < 25 and any(p in clean_user for p in ["hi", "hello", "hey", "fine", "good", "how are you", "thanks"])
+            and not any(kw in clean_user for kw in ["pdf", "doc", "file", "url", "summary", "explain", "what is", "how to", "search", "project", "code"])
+        )
+
+        if is_casual:
+            system_msg = SystemMessage(content=(
+                "You are a friendly AI assistant. Answer the user's casual phrase concisely, warmly, and directly. "
+                "Do NOT mention any documents or search results. NEVER say 'sorry' or 'I apologize'."
+            ))
+            # Send only system message + current user greeting to eliminate token buildup and keep response ultra-fast (<0.5s)
+            messages = [system_msg, HumanMessage(content=user_text)]
+            try:
+                response = await _invoke_llm(llm, messages)
+                return {"messages": [response], "agent_path": "direct"}
+            except Exception as exc:
+                logger.error("Casual agent response failed: %s", exc)
+                return {
+                    "messages": [AIMessage(content="Hello! How can I help you today?")],
+                    "agent_path": "direct",
+                }
 
         if has_documents:
             # Documents are indexed in the session — route directly to retrieval
@@ -596,7 +645,7 @@ def build_agent_graph(vector_store, session_dir: str = ""):
 def extract_result_metadata(result: dict) -> tuple[str, dict]:
     from helpers import clean_response
 
-    model_name = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model_name = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
     if not result:
         return "I could not generate a response.", {"model": model_name}
 
@@ -752,7 +801,7 @@ async def run_agent_pipeline(
     trace_data = {
         "steps": step_timings,
         "total_ms": total_ms,
-        "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        "model": os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
         "path": result.get("agent_path", "direct"),
         "blocked": result.get("blocked_reason") is not None,
         "context_snippet": (result.get("context_used", "")[:300] + "...") if result.get("context_used") else "",
