@@ -16,6 +16,8 @@ from pathlib import Path
 
 import markdown
 
+os.environ.setdefault("USER_AGENT", "AgenticRAGChatbot/1.0")
+
 ROOT = Path(__file__).parent
 BACKGROUND_PATH = ROOT / "assets" / "agentic-rag-background.png"
 
