@@ -22,6 +22,37 @@ BACKGROUND_PATH = ROOT / "assets" / "agentic-rag-background.png"
 SESSIONS_DIR = ROOT / "sessions"
 SESSIONS_DIR.mkdir(exist_ok=True)
 
+import concurrent.futures
+
+_thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
+
+def run_async_in_thread(coro_fn, *args, **kwargs):
+    """Execute an async coroutine function in a background worker thread with Streamlit ScriptRunContext."""
+    ctx = None
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        ctx = get_script_run_ctx()
+    except Exception:
+        pass
+
+    def _worker():
+        if ctx:
+            try:
+                from streamlit.runtime.scriptrunner import add_script_run_context
+                add_script_run_context(ctx=ctx)
+            except Exception:
+                pass
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro_fn(*args, **kwargs))
+        finally:
+            loop.close()
+    return _thread_pool.submit(_worker)
+
+
 # Rate Limiter settings
 MAX_REQUESTS = 10        # allowed prompts...
 WINDOW_SECONDS = 3600    # ...per 1-hour rolling window per session

@@ -31,6 +31,7 @@ from helpers import (
     rate_limit_status,
     format_seconds_human,
     get_client_id,
+    run_async_in_thread,
 )
 from rag_engine import process_uploaded_files, process_url
 from rag_agent import run_agent_pipeline
@@ -47,26 +48,31 @@ def _save() -> None:
 
 
 def stream_text(text: str, metadata: dict, placeholder) -> str:
-    """Stream the assistant response to the UI word by word and return partial or full text."""
+    """Stream the assistant response to the UI in word chunks and return partial or full text."""
+    if st.session_state.get("stop_requested"):
+        return ""
     words = text.split(" ")
     current_text = ""
-    for i, word in enumerate(words):
+    chunk_size = 3
+    for i in range(0, len(words), chunk_size):
         if st.session_state.get("stop_requested"):
             if current_text:
-                current_text += " \u23f9\ufe0f *[Response stopped by user]*"
+                placeholder.markdown(
+                    build_assistant_html(current_text, metadata),
+                    unsafe_allow_html=True,
+                )
+                st.session_state.latest_partial_response = {"content": current_text, "metadata": metadata}
             else:
-                current_text = "\u23f9\ufe0f *[Response stopped by user]*"
-            placeholder.markdown(
-                build_assistant_html(current_text, metadata),
-                unsafe_allow_html=True,
-            )
+                placeholder.empty()
             return current_text
-        current_text += (word if i == 0 else " " + word)
+        chunk = " ".join(words[i : i + chunk_size])
+        current_text += (chunk if i == 0 else " " + chunk)
+        st.session_state.latest_partial_response = {"content": current_text, "metadata": metadata}
         placeholder.markdown(
             build_assistant_html(current_text, metadata),
             unsafe_allow_html=True,
         )
-        time.sleep(0.012)
+        time.sleep(0.015)
     return current_text
 
 
@@ -546,6 +552,7 @@ st.html(
                         container.style.setProperty('opacity', '0', 'important');
                         container.style.setProperty('overflow', 'hidden', 'important');
                         container.style.setProperty('z-index', '-9999', 'important');
+                        container.style.setProperty('display', 'block', 'important');
                     }}
                     btn.style.setProperty('pointer-events', 'auto', 'important');
                     btn.disabled = false;
@@ -559,28 +566,31 @@ st.html(
             window.__hiddenBtnObserver.observe(document.body, {{ childList: true, subtree: true }});
         }}
 
+        setInterval(function() {{
+            if (document.body.dataset.isProcessing === "true") {{
+                const submitBtn = document.querySelector('[data-testid="stChatInputSubmitButton"]');
+                if (submitBtn) {{
+                    if (submitBtn.hasAttribute('disabled')) {{
+                        submitBtn.removeAttribute('disabled');
+                    }}
+                    submitBtn.disabled = false;
+                    submitBtn.style.setProperty('pointer-events', 'auto', 'important');
+                    submitBtn.style.setProperty('cursor', 'pointer', 'important');
+                }}
+            }}
+        }}, 50);
+
         if (!window.__chatInputListenersAttached) {{
             window.__chatInputListenersAttached = true;
 
-            document.addEventListener('keydown', function(e) {{
-                if (document.body.dataset.isProcessing === "true") {{
-                    const target = e.target;
-                    if (target && target.tagName === 'TEXTAREA' && target.closest('[data-testid="stChatInput"]')) {{
-                        if (e.key === 'Enter' && !e.shiftKey) {{
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
-                        }}
-                    }}
-                }}
-            }}, true);
-
-            document.addEventListener('click', function(e) {{
+            function handleStopTrigger(e) {{
                 if (document.body.dataset.isProcessing === "true") {{
                     const btn = e.target.closest('[data-testid="stChatInputSubmitButton"]');
                     if (btn) {{
-                        e.preventDefault();
-                        e.stopPropagation();
+                        if (e) {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
                         const allBtns = Array.from(document.querySelectorAll('button'));
                         const stopBtn = allBtns.find(b => {{
                             const txt = (b.textContent || '').trim();
@@ -595,7 +605,24 @@ st.html(
                         return false;
                     }}
                 }}
+            }}
+
+            document.addEventListener('keydown', function(e) {{
+                if (document.body.dataset.isProcessing === "true") {{
+                    const target = e.target;
+                    if (target && target.tagName === 'TEXTAREA' && target.closest('[data-testid="stChatInput"]')) {{
+                        if (e.key === 'Enter' && !e.shiftKey) {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        }}
+                    }}
+                }}
             }}, true);
+
+            document.addEventListener('pointerdown', handleStopTrigger, true);
+            document.addEventListener('mousedown', handleStopTrigger, true);
+            document.addEventListener('click', handleStopTrigger, true);
         }}
     }})();
     </script>
@@ -634,6 +661,7 @@ if st.session_state.get("loaded_session") != session_id:
     st.session_state.ragas_scores = {}
     st.session_state.ragas_pending = None
     st.session_state.delete_confirm = None
+    st.session_state.latest_partial_response = None
 
 
 def new_chat() -> None:
@@ -718,15 +746,21 @@ with st.sidebar:
         <script>
             function initChatCardListeners() {
                 document.querySelectorAll('button').forEach(btn => {
-                    const t = btn.textContent;
-                    if (t.startsWith('HIDDEN_SEL_') || t.startsWith('HIDDEN_DEL_') || t.startsWith('HIDDEN_STOP_ACTION') || t.includes('HIDDEN_STOP_ACTION')) {
-                        const el = btn.closest('[data-testid="stElementContainer"]') || btn.closest('[data-testid="stButton"]');
+                    const t = btn.textContent || '';
+                    const label = btn.getAttribute('aria-label') || '';
+                    if (t.startsWith('HIDDEN_SEL_') || t.startsWith('HIDDEN_DEL_') || t.startsWith('HIDDEN_STOP_ACTION') || t.includes('HIDDEN_STOP_ACTION') || label.includes('HIDDEN_STOP_ACTION')) {
+                        const el = btn.closest('[data-testid="stElementContainer"]') || btn.closest('[data-testid="stButton"]') || btn;
                         if (el) {
-                            el.style.display = 'none';
-                            el.style.height = '0px';
-                            el.style.margin = '0px';
-                            el.style.padding = '0px';
+                            el.style.setProperty('position', 'fixed', 'important');
+                            el.style.setProperty('top', '-9999px', 'important');
+                            el.style.setProperty('left', '-9999px', 'important');
+                            el.style.setProperty('width', '1px', 'important');
+                            el.style.setProperty('height', '1px', 'important');
+                            el.style.setProperty('opacity', '0', 'important');
+                            el.style.setProperty('display', 'block', 'important');
                         }
+                        btn.disabled = false;
+                        btn.style.setProperty('pointer-events', 'auto', 'important');
                     }
                 });
                 const container = document.querySelector('.chat-history-list');
@@ -904,18 +938,17 @@ user_input = st.chat_input(
 if user_input:
     if st.session_state.get("processing"):
         st.session_state.stop_requested = True
-        st.session_state.processing = None
-        if st.session_state.messages:
-            if st.session_state.messages[-1].get("role") == "user":
+        if st.session_state.get("latest_partial_response"):
+            partial = st.session_state.latest_partial_response
+            if partial.get("content") and partial["content"].strip():
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": "\u23f9\ufe0f *[Response stopped by user]*",
-                    "metadata": {}
+                    "content": partial["content"],
+                    "metadata": partial.get("metadata", {})
                 })
-            elif st.session_state.messages[-1].get("role") == "assistant":
-                content = st.session_state.messages[-1].get("content", "")
-                if "\u23f9\ufe0f *[Response stopped by user]*" not in content:
-                    st.session_state.messages[-1]["content"] = content.strip() + " \u23f9\ufe0f *[Response stopped by user]*"
+            st.session_state.latest_partial_response = None
+        st.session_state.processing = None
+        st.session_state.active_future = None
         _save()
         st.rerun()
     uploaded = []
@@ -941,6 +974,7 @@ if user_input:
             {"role": "user", "content": prompt, "files": uploaded, "timestamp": datetime.now().strftime("%I:%M %p").lstrip("0")}
         )
         st.session_state.stop_requested = False
+        st.session_state.latest_partial_response = None
         st.session_state.processing = {"files": user_input.files, "prompt": prompt, "url": pending_url}
         _save()
         st.rerun()
@@ -953,18 +987,17 @@ if st.session_state.get("processing"):
 
     if st.button("HIDDEN_STOP_ACTION", key="hidden_stop_action_btn"):
         st.session_state.stop_requested = True
-        st.session_state.processing = None
-        if st.session_state.messages:
-            if st.session_state.messages[-1].get("role") == "user":
+        if st.session_state.get("latest_partial_response"):
+            partial = st.session_state.latest_partial_response
+            if partial.get("content") and partial["content"].strip():
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": "\u23f9\ufe0f *[Response stopped by user]*",
-                    "metadata": {}
+                    "content": partial["content"],
+                    "metadata": partial.get("metadata", {})
                 })
-            elif st.session_state.messages[-1].get("role") == "assistant":
-                content = st.session_state.messages[-1].get("content", "")
-                if "\u23f9\ufe0f *[Response stopped by user]*" not in content:
-                    st.session_state.messages[-1]["content"] = content.strip() + " \u23f9\ufe0f *[Response stopped by user]*"
+            st.session_state.latest_partial_response = None
+        st.session_state.processing = None
+        st.session_state.active_future = None
         _save()
         st.rerun()
 
@@ -1007,7 +1040,8 @@ if st.session_state.get("processing"):
                     st.session_state.chunk_count += count
                     st.session_state.ingested_urls.append(task["url"])
         if task.get("prompt"):
-            status.markdown(render_reasoning(0), unsafe_allow_html=True)
+            current_step = st.session_state.get("pipeline_step", 0)
+            status.markdown(render_reasoning(current_step), unsafe_allow_html=True)
             history = [
                 {
                     "role": message["role"],
@@ -1024,31 +1058,61 @@ if st.session_state.get("processing"):
             })
 
             def on_step(step_idx, _node_name):
-                status.markdown(render_reasoning(step_idx), unsafe_allow_html=True)
+                st.session_state.pipeline_step = step_idx
 
-            answer, metadata = asyncio.run(run_agent_pipeline(
-                st.session_state.vector_store,
-                history,
-                st.session_state.uploaded_file_names,
-                st.session_state.ingested_urls,
-                session_dir=str(session_path(st.session_state.session_id)),
-                on_step=on_step,
-            ))
+            if "active_future" not in st.session_state or st.session_state.active_future is None:
+                st.session_state.pipeline_step = 0
+                st.session_state.active_future = run_async_in_thread(
+                    run_agent_pipeline,
+                    st.session_state.vector_store,
+                    history,
+                    st.session_state.uploaded_file_names,
+                    st.session_state.ingested_urls,
+                    session_dir=str(session_path(st.session_state.session_id)),
+                    on_step=on_step,
+                )
 
-            status.empty()
-            if not st.session_state.get("stop_requested"):
-                partial_answer = stream_text(answer, metadata, streaming_placeholder)
-                st.session_state.messages.append({"role": "assistant", "content": partial_answer, "metadata": metadata})
+            future = st.session_state.active_future
+            if future:
+                if not future.done():
+                    time.sleep(0.06)
+                    st.rerun()
+                else:
+                    try:
+                        answer, metadata = future.result()
+                    except Exception as exc:
+                        answer, metadata = f"I ran into an error while processing that request: {exc}", {}
+                    st.session_state.active_future = None
+                    status.empty()
+                    if not st.session_state.get("stop_requested"):
+                        partial_answer = stream_text(answer, metadata, streaming_placeholder)
+                        if partial_answer and partial_answer.strip():
+                            st.session_state.messages.append({"role": "assistant", "content": partial_answer, "metadata": metadata})
+                    else:
+                        if st.session_state.get("latest_partial_response"):
+                            partial = st.session_state.latest_partial_response
+                            if partial.get("content") and partial["content"].strip():
+                                st.session_state.messages.append({
+                                    "role": "assistant",
+                                    "content": partial["content"],
+                                    "metadata": partial.get("metadata", {})
+                                })
+                    st.session_state.latest_partial_response = None
+                    st.session_state.processing = None
+                    _save()
+                    st.rerun()
         elif task.get("files") or task.get("url"):
             status.empty()
             notice = "Your document has been indexed. What would you like to know about it?"
             if not st.session_state.get("stop_requested"):
                 partial_notice = stream_text(notice, {}, streaming_placeholder)
                 st.session_state.messages.append({"role": "assistant", "content": partial_notice, "metadata": {}})
+            st.session_state.processing = None
+            _save()
+            st.rerun()
     except Exception as exc:
         status.empty()
         st.session_state.messages.append({"role": "assistant", "content": f"I ran into an error while processing that request: {exc}", "metadata": {}})
-    finally:
         st.session_state.processing = None
         _save()
         st.rerun()

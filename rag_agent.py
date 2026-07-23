@@ -563,11 +563,13 @@ def build_agent_graph(vector_store, session_dir: str = ""):
 
         if context_used and context_used != "No relevant documents found.":
             prompt = (
-                "Based EXCLUSIVELY on the retrieved context below, answer the user's question. "
-                "Do NOT use your training knowledge about the topic.\n"
-                "CRITICAL FOCUS: Focus your answer EXCLUSIVELY on the document or file relevant to the user's latest question. "
-                "Do NOT explain or include unrelated web links or old documents from the context unless the user explicitly asks to compare them.\n"
-                "Do NOT list sources at the end — they are displayed separately by the UI.\n\n"
+                "You are an AI research assistant. You are provided with retrieved context from uploaded documents.\n\n"
+                "INSTRUCTIONS:\n"
+                "1. First check if the retrieved context below contains information relevant to the user's question.\n"
+                "2. If the retrieved context contains the answer, answer the question accurately based on the context.\n"
+                "3. If the user's question is NOT mentioned or covered in the retrieved context (e.g. general questions like 'Tell me about transformers'), state clearly that it is not mentioned in the uploaded documents, and then provide a complete, helpful answer using your general knowledge.\n"
+                "4. Do NOT say 'sorry' or 'I apologize'.\n"
+                "5. Do NOT list sources at the end of your response — citations are handled separately by the UI.\n\n"
                 f"=== RETRIEVED CONTEXT ===\n{context_used}\n=========================="
             )
         else:
@@ -682,15 +684,20 @@ def extract_result_metadata(result: dict) -> tuple[str, dict]:
                     seen.add((name, page))
                     sources.append({"name": name, "page": page})
 
-        # Fallback: if strict filtering removed all, show first matching distinct sources
-        if not sources:
+        is_not_found = any(phrase in answer_lower for phrase in [
+            "not mentioned in", "no mention of", "not found in", "not present in",
+            "does not contain", "does not mention", "isn't mentioned", "is not in the provided"
+        ])
+
+        # Fallback: if strict filtering removed all and the response is not a 'not found' message, show sources
+        if not sources and not is_not_found:
             for m in re.finditer(r"\[Source \d+: (.+?)(?: \(page ([^)]+)\))?\]", context):
                 name, page = m.group(1).strip(), m.group(2)
                 if (name, page) not in seen:
                     seen.add((name, page))
                     sources.append({"name": name, "page": page})
 
-        if sources:
+        if sources and not is_not_found:
             metadata["sources"] = sources
 
     docs = result.get("retrieved_docs", [])
