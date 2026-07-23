@@ -257,11 +257,13 @@ def build_ragas_badges(scores: dict) -> str:
     metrics = [
         ("faithfulness", "Faithfulness"),
         ("answer_relevancy", "Relevancy"),
-        ("context_precision", "Precision"),
     ]
     for key, label in metrics:
         score = scores.get(key)
         if score is not None:
+            import math
+            if math.isnan(score):
+                continue
             if score >= 0.7:
                 color = "#22c55e"
             elif score >= 0.4:

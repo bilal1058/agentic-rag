@@ -854,6 +854,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             "question": [question],
             "answer": [answer],
             "contexts": [context_passages],
+            "ground_truth": [answer],
         })
 
         eval_llm = None
@@ -887,7 +888,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         answer_relevancy.llm = llm_wrapper
         answer_relevancy.embeddings = emb_wrapper
 
-        run_config = RunConfig(timeout=30, max_retries=1, max_wait=8)
+        run_config = RunConfig(timeout=45, max_retries=2, max_wait=10)
 
         if progress_callback:
             progress_callback(0.15, "Evaluating all metrics in parallel...")
@@ -910,7 +911,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_run_eval_job)
-            eval_result = future.result(timeout=40)
+            eval_result = future.result(timeout=55)
 
         def _extract(res, key):
             """Extract a score regardless of RAGAS version."""
@@ -925,10 +926,12 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             except (TypeError, ValueError):
                 return 0.0
 
-        scores = {
-            key: _extract(eval_result, key)
-            for key in ("faithfulness", "answer_relevancy")
-        }
+        import math
+        scores = {}
+        for key in ("faithfulness", "answer_relevancy"):
+            val = _extract(eval_result, key)
+            if not math.isnan(val):
+                scores[key] = val
 
         if progress_callback:
             progress_callback(1.0, "Complete")
