@@ -17,6 +17,8 @@ qdrant-client>=1.9.0
 langchain-qdrant>=0.1.0
 langchain-huggingface>=0.0.1
 sentence-transformers>=2.6.0
+torch
+torchvision
 
 # Document Loaders & Parsers
 pdfminer.six>=20221105

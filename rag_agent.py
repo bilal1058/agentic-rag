@@ -861,10 +861,19 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         # that RAGAS's default OpenAI client has with a Groq key.)
         from langchain_groq import ChatGroq
         eval_llm = None
-        if os.environ.get("GROQ_API_KEY"):
+        groq_key = os.environ.get("GROQ_API_KEY")
+        if not groq_key:
+            try:
+                import streamlit as st
+                if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
+                    groq_key = st.secrets["GROQ_API_KEY"]
+            except Exception:
+                pass
+
+        if groq_key:
             eval_llm = ChatGroq(
-                model=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-                api_key=os.environ.get("GROQ_API_KEY"),
+                model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
+                api_key=groq_key,
                 temperature=0.0,
             )
         if eval_llm is None:
@@ -874,8 +883,6 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             return None
 
         llm_wrapper = LangchainLLMWrapper(eval_llm)
-        # Reuse the cached embeddings instance — instantiating
-        # HuggingFaceEmbeddings here reloaded the model on every evaluation.
         from rag_engine import _get_embeddings
         emb_wrapper = LangchainEmbeddingsWrapper(_get_embeddings())
 
@@ -885,20 +892,30 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         answer_relevancy.embeddings = emb_wrapper
         context_precision.llm = llm_wrapper
 
-        # Tight run config: the RAGAS defaults (180s timeout, up to 10 retries
-        # with exponential backoff) can silently hang for minutes on rate limits.
         run_config = RunConfig(timeout=60, max_retries=3, max_wait=15)
 
-        # Single evaluate() call — RAGAS runs all metric jobs concurrently,
-        # instead of three sequential evaluations.
         if progress_callback:
             progress_callback(0.15, "Evaluating all metrics in parallel...")
 
-        result = evaluate(
-            dataset=eval_dataset,
-            metrics=[faithfulness, answer_relevancy, context_precision],
-            run_config=run_config,
-        )
+        # Isolate evaluate() in a dedicated worker thread with its own asyncio event loop
+        # to prevent loop conflicts with Streamlit's runtime thread on Linux/Streamlit Cloud.
+        import concurrent.futures
+        def _run_eval_job():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return evaluate(
+                    dataset=eval_dataset,
+                    metrics=[faithfulness, answer_relevancy, context_precision],
+                    run_config=run_config,
+                )
+            finally:
+                loop.close()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_run_eval_job)
+            result = future.result(timeout=75)
 
         def _extract(res, key):
             """Extract a score regardless of RAGAS version."""
@@ -924,5 +941,5 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         return scores if scores else None
 
     except Exception as e:
-        logger.warning("RAGAS evaluation failed: %s", e)
+        logger.error("RAGAS evaluation failed: %s", e, exc_info=True)
         return None

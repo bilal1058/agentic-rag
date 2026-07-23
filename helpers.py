@@ -22,6 +22,19 @@ BACKGROUND_PATH = ROOT / "assets" / "agentic-rag-background.png"
 SESSIONS_DIR = ROOT / "sessions"
 SESSIONS_DIR.mkdir(exist_ok=True)
 
+def sync_streamlit_secrets():
+    """Copy Streamlit Cloud secrets into os.environ if present."""
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            for key, val in st.secrets.items():
+                if isinstance(val, str) and key not in os.environ:
+                    os.environ[key] = val
+    except Exception:
+        pass
+
+sync_streamlit_secrets()
+
 import concurrent.futures
 
 _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
