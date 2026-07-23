@@ -305,9 +305,11 @@ def save_session(
     uploaded_file_names: list,
     ingested_urls: list,
     chunk_count: int,
+    client_id: str = "",
 ) -> None:
     """Persist session data to disk."""
     data = {
+        "client_id": client_id,
         "messages": messages,
         "uploaded_file_names": uploaded_file_names,
         "ingested_urls": ingested_urls,
@@ -332,12 +334,15 @@ def delete_session(session_id: str) -> None:
             pass
 
 
-def conversation_history() -> list[dict]:
-    """Return saved conversations, newest first."""
+def conversation_history(client_id: str = "") -> list[dict]:
+    """Return saved conversations for the given client, newest first."""
     conversations = []
     for file in SESSIONS_DIR.glob("*/metadata.json"):
         try:
             data = json.loads(file.read_text(encoding="utf-8"))
+            saved_client = data.get("client_id", "")
+            if client_id and saved_client and saved_client != client_id:
+                continue
             messages = data.get("messages", [])
             first_user = next(
                 (m.get("content", "") for m in messages if m.get("role") == "user"),
@@ -363,20 +368,24 @@ def conversation_history() -> list[dict]:
 
 
 def get_client_id() -> str:
-    """Return a unique client identifier (IP address or fallback key) for global rate limiting across reloads."""
+    """Return a unique client identifier (IP + User-Agent hash) for session isolation & rate limiting."""
     try:
         from streamlit.web.server.websocket_headers import _get_websocket_headers
         headers = _get_websocket_headers()
         if headers:
             xfwd = headers.get("X-Forwarded-For") or headers.get("x-forwarded-for")
+            ua = headers.get("User-Agent") or headers.get("user-agent") or ""
+            ua_sig = str(abs(hash(ua)) % 100000) if ua else ""
             if xfwd:
-                return xfwd.split(",")[0].strip()
+                ip = xfwd.split(",")[0].strip()
+                return f"{ip}_{ua_sig}" if ua_sig else ip
             remote_addr = headers.get("Remote-Addr") or headers.get("remote-addr")
             if remote_addr:
-                return remote_addr.strip()
+                ip = remote_addr.strip()
+                return f"{ip}_{ua_sig}" if ua_sig else ip
             host = headers.get("Host") or headers.get("host")
             if host:
-                return host.strip()
+                return f"{host.strip()}_{ua_sig}" if ua_sig else host.strip()
     except Exception:
         pass
     return "global_user_default"

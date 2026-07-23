@@ -44,6 +44,7 @@ def _save() -> None:
         st.session_state.uploaded_file_names,
         st.session_state.ingested_urls,
         st.session_state.chunk_count,
+        client_id=get_client_id(),
     )
 
 
@@ -672,7 +673,7 @@ def new_chat() -> None:
 def show_delete_dialog():
     del_id = st.session_state.delete_confirm
     del_title = "this conversation"
-    for item in conversation_history():
+    for item in conversation_history(get_client_id()):
         if item["id"] == del_id:
             del_title = esc(item["title"])
             break
@@ -707,7 +708,7 @@ with st.sidebar:
     search_term = st.text_input("Search conversations", placeholder="\u2315  Search conversations...", label_visibility="collapsed")
     st.markdown('<div class="side-heading">Recent Chats</div>', unsafe_allow_html=True)
     matching_history = [
-        item for item in conversation_history()
+        item for item in conversation_history(get_client_id())
         if search_term.lower() in (item["title"] + " " + item["preview"]).lower()
     ]
     if matching_history:
