@@ -2,6 +2,8 @@
 
 A production-grade **agentic RAG chatbot** that autonomously decides whether to search your uploaded documents or answer from its own knowledge. Built with LangGraph, NeMo Guardrails, and Streamlit.
 
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Streamlit-FF4B4B?style=for-the-badge)](https://agentic-rag-chat.streamlit.app/)
+
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![LangGraph](https://img.shields.io/badge/LangGraph-Agent_Framework-green.svg)
 ![NeMo](https://img.shields.io/badge/NeMo_Guardrails-Safety-red.svg)
