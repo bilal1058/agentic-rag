@@ -180,3 +180,8 @@ The app auto-detects Redis and enables caching. Without Redis, the app works nor
 |---------|----------|
 | `ModuleNotFoundError` | Make sure your venv is activated: `venv\Scripts\activate` |
 | Redis not found | Redis is optional — the app works without it, just without caching |
+
+<img width="1264" height="756" alt="image" src="https://github.com/user-attachments/assets/3fa079b5-e6a3-480e-a590-b58f1a98c641" />
+
+
+<img width="1268" height="706" alt="image" src="https://github.com/user-attachments/assets/675efe47-bed6-44e2-a33b-7b45b8299e1b" />
