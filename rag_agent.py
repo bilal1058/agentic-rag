@@ -837,7 +837,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         from ragas import evaluate
         from ragas.run_config import RunConfig
-        from ragas.metrics import faithfulness, answer_relevancy
+        from ragas.metrics import faithfulness, answer_relevancy, context_precision
         from ragas.llms import LangchainLLMWrapper
         from ragas.embeddings import LangchainEmbeddingsWrapper
         from datasets import Dataset
@@ -887,6 +887,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         faithfulness.llm = llm_wrapper
         answer_relevancy.llm = llm_wrapper
         answer_relevancy.embeddings = emb_wrapper
+        context_precision.llm = llm_wrapper
 
         run_config = RunConfig(timeout=45, max_retries=2, max_wait=10)
 
@@ -903,7 +904,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             try:
                 return evaluate(
                     dataset=eval_dataset,
-                    metrics=[faithfulness, answer_relevancy],
+                    metrics=[faithfulness, answer_relevancy, context_precision],
                     run_config=run_config,
                 )
             finally:
@@ -928,15 +929,16 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         import math
         scores = {}
-        for key in ("faithfulness", "answer_relevancy"):
+        for key in ("faithfulness", "answer_relevancy", "context_precision"):
             val = _extract(eval_result, key)
-            if not math.isnan(val):
-                scores[key] = val
+            # Keep valid scores; replace NaN with sentinel so UI can show "N/A"
+            scores[key] = val if not math.isnan(val) else None
 
         if progress_callback:
             progress_callback(1.0, "Complete")
 
-        return (scores, None) if scores else (None, "RAGAS evaluation yielded empty scores.")
+        has_valid = any(v is not None for v in scores.values())
+        return (scores, None) if has_valid else (None, "RAGAS evaluation yielded empty scores — all metrics returned NaN.")
 
     except Exception as e:
         logger.error("RAGAS evaluation failed: %s", e, exc_info=True)

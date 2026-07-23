@@ -257,13 +257,15 @@ def build_ragas_badges(scores: dict) -> str:
     metrics = [
         ("faithfulness", "Faithfulness"),
         ("answer_relevancy", "Relevancy"),
+        ("context_precision", "Precision"),
     ]
     for key, label in metrics:
         score = scores.get(key)
         if score is not None:
             import math
             if math.isnan(score):
-                continue
+                score = None
+        if score is not None:
             if score >= 0.7:
                 color = "#22c55e"
             elif score >= 0.4:
@@ -273,6 +275,13 @@ def build_ragas_badges(scores: dict) -> str:
             badges.append(
                 f'<span class="ragas-badge" style="border-color:{color}40;background:{color}10">'
                 f'<b style="color:{color}">{score:.0%}</b> {label}</span>'
+            )
+        else:
+            # Show N/A for metrics that returned NaN or are missing
+            color = "#71717a"
+            badges.append(
+                f'<span class="ragas-badge" style="border-color:{color}40;background:{color}10">'
+                f'<b style="color:{color}">N/A</b> {label}</span>'
             )
     if badges:
         return f'<div class="metadata ragas-scores">{"".join(badges)}</div>'
