@@ -819,20 +819,22 @@ async def run_agent_pipeline(
 
 
 def evaluate_ragas(question: str, answer: str, context: str, progress_callback=None) -> tuple[dict | None, str | None]:
-    """Run RAGAS evaluation on a single question-answer-context triple.
-
-    Args:
-        question: The user's question.
-        answer: The assistant's answer.
-        context: The retrieved context text.
-        progress_callback: Optional callable(progress: float, label: str) called
-            after each metric (0.33, 0.66, 1.0).
-
-    Returns (scores, err_msg) tuple:
-        scores: {"faithfulness": float, "answer_relevancy": float, "context_precision": float} or None
-        err_msg: Error message string or None
-    """
+    """Run RAGAS evaluation on a single question-answer-context triple."""
     try:
+        import sys
+        import types
+        if "langchain_community.chat_models.vertexai" not in sys.modules:
+            try:
+                from langchain_community.chat_models.vertexai import ChatVertexAI
+            except ModuleNotFoundError:
+                try:
+                    from langchain_google_vertexai import ChatVertexAI
+                except ModuleNotFoundError:
+                    ChatVertexAI = type("ChatVertexAI", (), {})
+                mod = types.ModuleType("langchain_community.chat_models.vertexai")
+                mod.ChatVertexAI = ChatVertexAI
+                sys.modules["langchain_community.chat_models.vertexai"] = mod
+
         from ragas import evaluate
         from ragas.run_config import RunConfig
         from ragas.metrics import faithfulness, answer_relevancy, context_precision
@@ -843,8 +845,6 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         if not question or not answer or not context:
             return None, "Missing required input (question, answer, or document context)."
 
-        # Split context into individual passages. Cap the passage count:
-        # context_precision makes one LLM call PER passage.
         context_passages = [p.strip() for p in re.split(r"\n{2,}", context) if p.strip()]
         if not context_passages:
             context_passages = [context]
@@ -854,13 +854,9 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             "question": [question],
             "answer": [answer],
             "contexts": [context_passages],
-            "ground_truth": [answer],  # placeholder, not used by these 3 metrics
+            "ground_truth": [answer],
         })
 
-        # Prefer Groq — it is far faster than the OpenRouter free-tier model.
-        # (Wrapping with LangchainLLMWrapper avoids the OPENAI_API_KEY clash
-        # that RAGAS's default OpenAI client has with a Groq key.)
-        from langchain_groq import ChatGroq
         eval_llm = None
         groq_key = os.environ.get("GROQ_API_KEY")
         if not groq_key:
@@ -916,7 +912,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_run_eval_job)
-            result = future.result(timeout=75)
+            eval_result = future.result(timeout=75)
 
         def _extract(res, key):
             """Extract a score regardless of RAGAS version."""
@@ -932,7 +928,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
                 return 0.0
 
         scores = {
-            key: _extract(result, key)
+            key: _extract(eval_result, key)
             for key in ("faithfulness", "answer_relevancy", "context_precision")
         }
 
