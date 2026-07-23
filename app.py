@@ -535,6 +535,21 @@ st.html(
     f"""
     <script>
     (function() {{
+        try {{
+            let cid = localStorage.getItem('rag_client_id');
+            if (!cid) {{
+                cid = 'c_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('rag_client_id', cid);
+            }}
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('client_id') !== cid) {{
+                url.searchParams.set('client_id', cid);
+                window.location.replace(url.toString());
+            }}
+        }} catch(e) {{
+            console.error('Error handling rag_client_id:', e);
+        }}
+
         document.body.dataset.isProcessing = "{is_proc_js}";
 
         function hideHiddenButtons() {{
@@ -635,9 +650,12 @@ if "delete_session" in st.query_params:
     del_id = st.query_params["delete_session"]
     delete_session(del_id)
     current_session = st.query_params.get("session_id")
+    current_client = st.query_params.get("client_id")
     new_params = {}
     if current_session and current_session != del_id:
         new_params["session_id"] = current_session
+    if current_client:
+        new_params["client_id"] = current_client
     st.query_params.clear()
     for k, v in new_params.items():
         st.query_params[k] = v
@@ -650,9 +668,17 @@ if "session_id" not in st.query_params:
 
 session_id = str(st.query_params["session_id"])
 saved = load_session(session_id)
+active_client = get_client_id()
+
+if saved and saved.get("client_id"):
+    if active_client and active_client != "global_user_default" and saved["client_id"] != active_client:
+        st.query_params["session_id"] = str(uuid.uuid4())
+        st.rerun()
+
 if st.session_state.get("loaded_session") != session_id:
     st.session_state.loaded_session = session_id
     st.session_state.session_id = session_id
+    st.session_state.client_id = active_client
     st.session_state.messages = saved.get("messages", [])
     st.session_state.uploaded_file_names = saved.get("uploaded_file_names", [])
     st.session_state.ingested_urls = saved.get("ingested_urls", [])

@@ -341,8 +341,9 @@ def conversation_history(client_id: str = "") -> list[dict]:
         try:
             data = json.loads(file.read_text(encoding="utf-8"))
             saved_client = data.get("client_id", "")
-            if client_id and saved_client and saved_client != client_id:
-                continue
+            if client_id:
+                if not saved_client or saved_client != client_id:
+                    continue
             messages = data.get("messages", [])
             first_user = next(
                 (m.get("content", "") for m in messages if m.get("role") == "user"),
@@ -368,7 +369,15 @@ def conversation_history(client_id: str = "") -> list[dict]:
 
 
 def get_client_id() -> str:
-    """Return a unique client identifier (IP + User-Agent hash) for session isolation & rate limiting."""
+    """Return a unique client identifier (localStorage browser token > query param > session state > header hash)."""
+    try:
+        import streamlit as st
+        if "client_id" in st.query_params and st.query_params["client_id"]:
+            return str(st.query_params["client_id"])
+        if hasattr(st, "session_state") and st.session_state.get("client_id"):
+            return str(st.session_state.client_id)
+    except Exception:
+        pass
     try:
         from streamlit.web.server.websocket_headers import _get_websocket_headers
         headers = _get_websocket_headers()
