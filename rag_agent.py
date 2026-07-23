@@ -818,7 +818,7 @@ async def run_agent_pipeline(
     return answer, metadata
 
 
-def evaluate_ragas(question: str, answer: str, context: str, progress_callback=None) -> dict | None:
+def evaluate_ragas(question: str, answer: str, context: str, progress_callback=None) -> tuple[dict | None, str | None]:
     """Run RAGAS evaluation on a single question-answer-context triple.
 
     Args:
@@ -828,8 +828,9 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         progress_callback: Optional callable(progress: float, label: str) called
             after each metric (0.33, 0.66, 1.0).
 
-    Returns {"faithfulness": float, "answer_relevancy": float, "context_precision": float}
-    or None on error.
+    Returns (scores, err_msg) tuple:
+        scores: {"faithfulness": float, "answer_relevancy": float, "context_precision": float} or None
+        err_msg: Error message string or None
     """
     try:
         from ragas import evaluate
@@ -840,7 +841,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         from datasets import Dataset
 
         if not question or not answer or not context:
-            return None
+            return None, "Missing required input (question, answer, or document context)."
 
         # Split context into individual passages. Cap the passage count:
         # context_precision makes one LLM call PER passage.
@@ -880,7 +881,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             eval_llm = _get_fallback_llm()
         if eval_llm is None:
             logger.warning("No LLM available for RAGAS evaluation")
-            return None
+            return None, "GROQ_API_KEY is not configured in environment or Streamlit Secrets."
 
         llm_wrapper = LangchainLLMWrapper(eval_llm)
         from rag_engine import _get_embeddings
@@ -938,8 +939,8 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         if progress_callback:
             progress_callback(1.0, "Complete")
 
-        return scores if scores else None
+        return (scores, None) if scores else (None, "RAGAS evaluation yielded empty scores.")
 
     except Exception as e:
         logger.error("RAGAS evaluation failed: %s", e, exc_info=True)
-        return None
+        return None, str(e)

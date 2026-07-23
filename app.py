@@ -45,6 +45,7 @@ def _save() -> None:
         st.session_state.ingested_urls,
         st.session_state.chunk_count,
         client_id=get_client_id(),
+        ragas_scores=st.session_state.get("ragas_scores", {}),
     )
 
 
@@ -685,7 +686,7 @@ if st.session_state.get("loaded_session") != session_id:
     st.session_state.chunk_count = saved.get("chunk_count", 0)
     st.session_state.vector_store = None
     st.session_state.processing = None
-    st.session_state.ragas_scores = {}
+    st.session_state.ragas_scores = saved.get("ragas_scores", {})
     st.session_state.ragas_pending = None
     st.session_state.delete_confirm = None
     st.session_state.latest_partial_response = None
@@ -923,6 +924,8 @@ with conversation:
                 question = meta.get("question", "")
                 answer_text = message.get("content", "")
                 context = meta.get("context_used", "")
+                if not context:
+                    context = meta.get("trace", {}).get("context_snippet", "")
                 if not question:
                     for i in range(msg_idx - 1, -1, -1):
                         prev = st.session_state.messages[i]
@@ -930,23 +933,21 @@ with conversation:
                             question = prev["content"]
                             break
                 if not context:
-                    st.warning("Cannot evaluate: no retrieved context.")
+                    st.warning("⚠️ RAGAS evaluation requires document context. Please upload a document or URL first to evaluate precision & faithfulness.")
                 elif not question:
-                    st.warning("Cannot evaluate: question not found.")
+                    st.warning("⚠️ Cannot evaluate: question text not found.")
                 else:
-                    prog = st.progress(0.0, text="\U0001f4ca Computing Faithfulness...")
-                    scores = evaluate_ragas(
+                    prog = st.progress(0.1, text="📊 Computing RAGAS evaluation metrics...")
+                    scores, err_msg = evaluate_ragas(
                         question, answer_text, context,
-                        progress_callback=lambda p, label: prog.progress(p, text=f"\U0001f4ca {label}"),
+                        progress_callback=lambda p, label: prog.progress(p, text=f"📊 {label}"),
                     )
                     if scores:
-                        prog.progress(1.0, text="\u2705 Complete")
+                        prog.progress(1.0, text="✅ Complete")
                         st.session_state.ragas_scores[msg_idx] = scores
+                        _save()
                     else:
-                        st.markdown(
-                            '<div class="ragas-progress-text" style="color:#ef4444;">\u26a0\ufe0f RAGAS evaluation failed</div>',
-                            unsafe_allow_html=True,
-                        )
+                        st.error(f"⚠️ RAGAS evaluation failed: {err_msg or 'Unknown error'}")
                 st.session_state.ragas_pending = None
                 st.rerun()
             else:

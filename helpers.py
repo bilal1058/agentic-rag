@@ -321,6 +321,7 @@ def save_session(
     ingested_urls: list,
     chunk_count: int,
     client_id: str = "",
+    ragas_scores: dict = None,
 ) -> None:
     """Persist session data to disk."""
     data = {
@@ -329,6 +330,7 @@ def save_session(
         "uploaded_file_names": uploaded_file_names,
         "ingested_urls": ingested_urls,
         "chunk_count": chunk_count,
+        "ragas_scores": ragas_scores or {},
         "updated_at": datetime.now().isoformat(),
     }
     try:
