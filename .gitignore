@@ -23,6 +23,7 @@ sessions/
 # Jupyter / editor
 .ipynb_checkpoints/
 .vscode/
+.devcontainer/
 
 # Test / packaging caches
 .pytest_cache/

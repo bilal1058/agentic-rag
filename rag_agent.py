@@ -837,7 +837,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         from ragas import evaluate
         from ragas.run_config import RunConfig
-        from ragas.metrics import faithfulness, answer_relevancy, context_precision
+        from ragas.metrics import faithfulness, answer_relevancy
         from ragas.llms import LangchainLLMWrapper
         from ragas.embeddings import LangchainEmbeddingsWrapper
         from datasets import Dataset
@@ -854,7 +854,6 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             "question": [question],
             "answer": [answer],
             "contexts": [context_passages],
-            "ground_truth": [answer],
         })
 
         eval_llm = None
@@ -887,9 +886,8 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
         faithfulness.llm = llm_wrapper
         answer_relevancy.llm = llm_wrapper
         answer_relevancy.embeddings = emb_wrapper
-        context_precision.llm = llm_wrapper
 
-        run_config = RunConfig(timeout=60, max_retries=3, max_wait=15)
+        run_config = RunConfig(timeout=30, max_retries=1, max_wait=8)
 
         if progress_callback:
             progress_callback(0.15, "Evaluating all metrics in parallel...")
@@ -904,7 +902,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
             try:
                 return evaluate(
                     dataset=eval_dataset,
-                    metrics=[faithfulness, answer_relevancy, context_precision],
+                    metrics=[faithfulness, answer_relevancy],
                     run_config=run_config,
                 )
             finally:
@@ -912,7 +910,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_run_eval_job)
-            eval_result = future.result(timeout=75)
+            eval_result = future.result(timeout=40)
 
         def _extract(res, key):
             """Extract a score regardless of RAGAS version."""
@@ -929,7 +927,7 @@ def evaluate_ragas(question: str, answer: str, context: str, progress_callback=N
 
         scores = {
             key: _extract(eval_result, key)
-            for key in ("faithfulness", "answer_relevancy", "context_precision")
+            for key in ("faithfulness", "answer_relevancy")
         }
 
         if progress_callback:

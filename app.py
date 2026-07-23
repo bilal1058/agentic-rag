@@ -933,7 +933,7 @@ with conversation:
                             question = prev["content"]
                             break
                 if not context:
-                    st.warning("⚠️ RAGAS evaluation requires document context. Please upload a document or URL first to evaluate precision & faithfulness.")
+                    st.warning("⚠️ RAGAS evaluation requires document context. Please upload a document or URL first — without retrieved context, faithfulness and relevancy scores cannot be computed.")
                 elif not question:
                     st.warning("⚠️ Cannot evaluate: question text not found.")
                 else:
@@ -951,9 +951,15 @@ with conversation:
                 st.session_state.ragas_pending = None
                 st.rerun()
             else:
-                if st.button("\U0001f4ca Evaluate", key=f"ragas_{msg_idx}", help="Run RAGAS evaluation on this response"):
-                    st.session_state.ragas_pending = msg_idx
-                    st.rerun()
+                # Only show the Evaluate button when document context is available
+                meta = message.get("metadata", {})
+                has_context = bool(meta.get("context_used") or meta.get("trace", {}).get("context_snippet"))
+                if has_context:
+                    if st.button("\U0001f4ca Evaluate", key=f"ragas_{msg_idx}", help="Run RAGAS evaluation on this response"):
+                        st.session_state.ragas_pending = msg_idx
+                        st.rerun()
+                else:
+                    st.caption("ℹ️ RAGAS evaluation is only available for responses based on uploaded documents.")
     streaming_placeholder = st.empty()
 
 
