@@ -891,7 +891,7 @@ with conversation:
                 )
             # Run RAGAS evaluation inline if this message is pending
             elif st.session_state.get("ragas_pending") == msg_idx:
-                from agent import evaluate_ragas
+                from rag_agent import evaluate_ragas
                 meta = message.get("metadata", {})
                 question = meta.get("question", "")
                 answer_text = message.get("content", "")
