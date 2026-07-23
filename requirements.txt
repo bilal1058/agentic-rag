@@ -11,6 +11,8 @@ markdown>=3.5.0
 # LLM Integrations
 langchain-groq>=0.1.0
 langchain-openai>=0.1.0
+langchain-google-vertexai
+google-cloud-aiplatform
 
 # Vector Store & Embeddings
 qdrant-client>=1.9.0
