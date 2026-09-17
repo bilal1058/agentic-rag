@@ -1,0 +1,51 @@
+"""Core package exporting authentication, configuration, rate limiting, and telemetry."""
+
+from core.auth import (
+    signup_user,
+    login_user,
+    logout_user,
+    create_user,
+    authenticate_user,
+    issue_token,
+    validate_token,
+    logout_token,
+    is_supabase_configured,
+    evaluate_password_strength,
+    update_user_name,
+    get_google_auth_url,
+)
+from core.config import (
+    get_runtime_config,
+    validate_runtime_environment,
+    startup_health_check,
+    check_rate_limit,
+    rate_limit_remaining,
+    reset_rate_limit,
+    RedisRateLimiter,
+    log_request,
+    measure_latency,
+)
+
+__all__ = [
+    "signup_user",
+    "login_user",
+    "logout_user",
+    "create_user",
+    "authenticate_user",
+    "issue_token",
+    "validate_token",
+    "logout_token",
+    "is_supabase_configured",
+    "evaluate_password_strength",
+    "update_user_name",
+    "get_google_auth_url",
+    "get_runtime_config",
+    "validate_runtime_environment",
+    "startup_health_check",
+    "check_rate_limit",
+    "rate_limit_remaining",
+    "reset_rate_limit",
+    "RedisRateLimiter",
+    "log_request",
+    "measure_latency",
+]

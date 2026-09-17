@@ -1,45 +1,34 @@
-# Python bytecode
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Byte-compiled / cache
 __pycache__/
 *.py[cod]
-*.pyo
-
-# Virtual environments
-venv/
-.env/
-.venv/
-
-# Environment and secrets
-.env
-.env.*
-!.env.example
+*$py.class
+.pytest_cache/
 
 # Local runtime artifacts
 chroma_db/
 qdrant_db/
 sessions/
+data/
 *.db
 *.sqlite3
+*.pdf
+*.docx
 
 # Jupyter / editor
 .ipynb_checkpoints/
 .vscode/
-.devcontainer/
+.idea/
 
-# Test / packaging caches
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# Build / distribution
-build/
-dist/
-*.egg-info/
+# Environment files
+.env
+.env.local
 
 # OS files
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log

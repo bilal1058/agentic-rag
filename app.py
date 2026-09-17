@@ -1,5 +1,6 @@
 """Streamlit interface for the Agentic RAG chatbot."""
 
+import os
 import time
 import uuid
 from datetime import datetime
@@ -9,9 +10,18 @@ from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
 
-load_dotenv()
-
-from helpers import (
+from core.config import get_runtime_config, startup_health_check, check_rate_limit, reset_rate_limit
+from core.auth import (
+    login_user,
+    signup_user,
+    logout_user,
+    is_supabase_configured,
+    evaluate_password_strength,
+    update_user_name,
+    get_google_auth_url,
+    validate_token,
+)
+from core.ui import (
     background_data_url,
     esc,
     human_time,
@@ -26,56 +36,36 @@ from helpers import (
     save_session as persist_session,
     delete_session,
     conversation_history,
-    check_rate_limit,
-    reset_rate_limit,
-    rate_limit_status,
-    format_seconds_human,
-    get_client_id,
-    run_async_in_thread,
 )
-from rag_engine import process_uploaded_files, process_url
-from rag_agent import run_agent_pipeline
+
+load_dotenv()
+RUNTIME_CONFIG = get_runtime_config()
+startup_warnings = startup_health_check()
 
 
 def _save() -> None:
+    user_id = st.session_state.get("user", {}).get("id") if st.session_state.get("user") else None
     persist_session(
         st.session_state.session_id,
         st.session_state.messages,
         st.session_state.uploaded_file_names,
         st.session_state.ingested_urls,
         st.session_state.chunk_count,
-        client_id=get_client_id(),
-        ragas_scores=st.session_state.get("ragas_scores", {}),
+        user_id=user_id,
     )
 
 
-def stream_text(text: str, metadata: dict, placeholder) -> str:
-    """Stream the assistant response to the UI in word chunks and return partial or full text."""
-    if st.session_state.get("stop_requested"):
-        return ""
+def stream_text(text: str, metadata: dict, placeholder) -> None:
+    """Stream the assistant response to the UI word by word."""
     words = text.split(" ")
     current_text = ""
-    chunk_size = 3
-    for i in range(0, len(words), chunk_size):
-        if st.session_state.get("stop_requested"):
-            if current_text:
-                placeholder.markdown(
-                    build_assistant_html(current_text, metadata),
-                    unsafe_allow_html=True,
-                )
-                st.session_state.latest_partial_response = {"content": current_text, "metadata": metadata}
-            else:
-                placeholder.empty()
-            return current_text
-        chunk = " ".join(words[i : i + chunk_size])
-        current_text += (chunk if i == 0 else " " + chunk)
-        st.session_state.latest_partial_response = {"content": current_text, "metadata": metadata}
+    for i, word in enumerate(words):
+        current_text += (word if i == 0 else " " + word)
         placeholder.markdown(
             build_assistant_html(current_text, metadata),
             unsafe_allow_html=True,
         )
-        time.sleep(0.015)
-    return current_text
+        time.sleep(0.012)
 
 
 st.set_page_config(
@@ -388,43 +378,6 @@ section[data-testid="stSidebar"] .stButton > button:active {{ transform:scale(.9
 .ragas-badge b {{ font-size:13px; }}
 div[data-testid="stButton"] > button {{ background:rgba(255,115,0,.1)!important; border:1px solid rgba(255,115,0,.3)!important; border-radius:999px!important; color:#d4d4d8!important; font-size:12px!important; padding:4px 14px!important; transition:all .2s ease!important; }}
 div[data-testid="stButton"] > button:hover {{ background:rgba(255,115,0,.2)!important; border-color:rgba(255,115,0,.5)!important; color:#fff!important; }}
-.sidebar-quota-card {{ margin:18px 4px 14px; padding:12px 14px; border:1px solid rgba(255,115,0,.25); border-radius:12px; background:rgba(255,100,0,.06); box-shadow:0 4px 16px rgba(0,0,0,.2); }}
-.quota-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }}
-.quota-title {{ color:#ff7a00; font-size:12px; font-weight:600; display:flex; align-items:center; gap:4px; }}
-.quota-count {{ color:#f4f4f5; font-size:12px; font-weight:700; }}
-.quota-progress-bar {{ height:6px; border-radius:999px; background:rgba(255,255,255,.1); overflow:hidden; }}
-.quota-progress-fill {{ height:100%; background:linear-gradient(90deg,#ff4d00,#ff8a00); border-radius:999px; transition:width .3s ease; }}
-.quota-subtext {{ color:#a1a1aa; font-size:11px; margin-top:6px; }}
-[data-testid="stElementContainer"]:has(button[aria-label*="HIDDEN_"]),
-button[aria-label*="HIDDEN_"],
-div:has(> button[aria-label*="HIDDEN_"]) {{
-  position: fixed !important;
-  top: -9999px !important;
-  left: -9999px !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0 !important;
-  overflow: hidden !important;
-  pointer-events: auto !important;
-  z-index: -9999 !important;
-}}
-body[data-is-processing="true"] [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] {{
-  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  opacity: 1 !important;
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.6) !important;
-}}
-body[data-is-processing="true"] [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] svg {{
-  display: none !important;
-}}
-body[data-is-processing="true"] [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"]::after {{
-  content: "⏹" !important;
-  font-size: 14px !important;
-  color: white !important;
-  font-weight: bold !important;
-  line-height: 1 !important;
-}}
 [data-testid="stBottom"], [data-testid="stBottom"] > div, [data-testid="stBottomBlockContainer"],
 [data-testid="stBottomBlockContainer"] > div {{
   background:transparent!important; box-shadow:none!important;
@@ -531,132 +484,13 @@ a.anchor-link {{ display: none !important; visibility: hidden !important; }}
     unsafe_allow_html=True,
 )
 
-is_proc_js = "true" if st.session_state.get("processing") else "false"
-st.html(
-    f"""
-    <script>
-    (function() {{
-        try {{
-            let cid = localStorage.getItem('rag_client_id');
-            if (!cid) {{
-                cid = 'c_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                localStorage.setItem('rag_client_id', cid);
-            }}
-            const url = new URL(window.location.href);
-            if (url.searchParams.get('client_id') !== cid) {{
-                url.searchParams.set('client_id', cid);
-                window.location.replace(url.toString());
-            }}
-        }} catch(e) {{
-            console.error('Error handling rag_client_id:', e);
-        }}
-
-        document.body.dataset.isProcessing = "{is_proc_js}";
-
-        function hideHiddenButtons() {{
-            const btns = document.querySelectorAll('button');
-            btns.forEach(btn => {{
-                const txt = (btn.textContent || '').trim();
-                const label = btn.getAttribute('aria-label') || '';
-                if (txt.includes('HIDDEN_') || label.includes('HIDDEN_')) {{
-                    const container = btn.closest('[data-testid="stElementContainer"]') || btn.closest('[data-testid="stButton"]') || btn;
-                    if (container) {{
-                        container.style.setProperty('position', 'fixed', 'important');
-                        container.style.setProperty('top', '-9999px', 'important');
-                        container.style.setProperty('left', '-9999px', 'important');
-                        container.style.setProperty('width', '1px', 'important');
-                        container.style.setProperty('height', '1px', 'important');
-                        container.style.setProperty('opacity', '0', 'important');
-                        container.style.setProperty('overflow', 'hidden', 'important');
-                        container.style.setProperty('z-index', '-9999', 'important');
-                        container.style.setProperty('display', 'block', 'important');
-                    }}
-                    btn.style.setProperty('pointer-events', 'auto', 'important');
-                    btn.disabled = false;
-                }}
-            }});
-        }}
-        hideHiddenButtons();
-
-        if (!window.__hiddenBtnObserver) {{
-            window.__hiddenBtnObserver = new MutationObserver(hideHiddenButtons);
-            window.__hiddenBtnObserver.observe(document.body, {{ childList: true, subtree: true }});
-        }}
-
-        setInterval(function() {{
-            if (document.body.dataset.isProcessing === "true") {{
-                const submitBtn = document.querySelector('[data-testid="stChatInputSubmitButton"]');
-                if (submitBtn) {{
-                    if (submitBtn.hasAttribute('disabled')) {{
-                        submitBtn.removeAttribute('disabled');
-                    }}
-                    submitBtn.disabled = false;
-                    submitBtn.style.setProperty('pointer-events', 'auto', 'important');
-                    submitBtn.style.setProperty('cursor', 'pointer', 'important');
-                }}
-            }}
-        }}, 50);
-
-        if (!window.__chatInputListenersAttached) {{
-            window.__chatInputListenersAttached = true;
-
-            function handleStopTrigger(e) {{
-                if (document.body.dataset.isProcessing === "true") {{
-                    const btn = e.target.closest('[data-testid="stChatInputSubmitButton"]');
-                    if (btn) {{
-                        if (e) {{
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                        const allBtns = Array.from(document.querySelectorAll('button'));
-                        const stopBtn = allBtns.find(b => {{
-                            const txt = (b.textContent || '').trim();
-                            const label = b.getAttribute('aria-label') || '';
-                            return txt.includes('HIDDEN_STOP_ACTION') || label.includes('HIDDEN_STOP_ACTION');
-                        }});
-                        if (stopBtn) {{
-                            stopBtn.disabled = false;
-                            stopBtn.style.setProperty('pointer-events', 'auto', 'important');
-                            stopBtn.click();
-                        }}
-                        return false;
-                    }}
-                }}
-            }}
-
-            document.addEventListener('keydown', function(e) {{
-                if (document.body.dataset.isProcessing === "true") {{
-                    const target = e.target;
-                    if (target && target.tagName === 'TEXTAREA' && target.closest('[data-testid="stChatInput"]')) {{
-                        if (e.key === 'Enter' && !e.shiftKey) {{
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
-                        }}
-                    }}
-                }}
-            }}, true);
-
-            document.addEventListener('pointerdown', handleStopTrigger, true);
-            document.addEventListener('mousedown', handleStopTrigger, true);
-            document.addEventListener('click', handleStopTrigger, true);
-        }}
-    }})();
-    </script>
-    """,
-    unsafe_allow_javascript=True,
-)
-
 if "delete_session" in st.query_params:
     del_id = st.query_params["delete_session"]
     delete_session(del_id)
     current_session = st.query_params.get("session_id")
-    current_client = st.query_params.get("client_id")
     new_params = {}
     if current_session and current_session != del_id:
         new_params["session_id"] = current_session
-    if current_client:
-        new_params["client_id"] = current_client
     st.query_params.clear()
     for k, v in new_params.items():
         st.query_params[k] = v
@@ -665,31 +499,29 @@ if "delete_session" in st.query_params:
 
 if "session_id" not in st.query_params:
     st.query_params["session_id"] = str(uuid.uuid4())
-    st.rerun()
+
 
 session_id = str(st.query_params["session_id"])
 saved = load_session(session_id)
-active_client = get_client_id()
-
-if saved and saved.get("client_id"):
-    if active_client and active_client != "global_user_default" and saved["client_id"] != active_client:
-        st.query_params["session_id"] = str(uuid.uuid4())
-        st.rerun()
-
 if st.session_state.get("loaded_session") != session_id:
     st.session_state.loaded_session = session_id
     st.session_state.session_id = session_id
-    st.session_state.client_id = active_client
     st.session_state.messages = saved.get("messages", [])
     st.session_state.uploaded_file_names = saved.get("uploaded_file_names", [])
     st.session_state.ingested_urls = saved.get("ingested_urls", [])
     st.session_state.chunk_count = saved.get("chunk_count", 0)
     st.session_state.vector_store = None
+    db_path = session_path(session_id) / "qdrant_db"
+    if db_path.exists() and (st.session_state.uploaded_file_names or st.session_state.ingested_urls):
+        try:
+            from core.rag import get_qdrant_vector_store
+            st.session_state.vector_store = get_qdrant_vector_store(str(db_path))
+        except Exception:
+            pass
     st.session_state.processing = None
-    st.session_state.ragas_scores = saved.get("ragas_scores", {})
+    st.session_state.ragas_scores = {}
     st.session_state.ragas_pending = None
     st.session_state.delete_confirm = None
-    st.session_state.latest_partial_response = None
 
 
 def new_chat() -> None:
@@ -700,7 +532,7 @@ def new_chat() -> None:
 def show_delete_dialog():
     del_id = st.session_state.delete_confirm
     del_title = "this conversation"
-    for item in conversation_history(get_client_id()):
+    for item in conversation_history():
         if item["id"] == del_id:
             del_title = esc(item["title"])
             break
@@ -720,6 +552,7 @@ def show_delete_dialog():
     with c2:
         if st.button("Delete", key="confirm_del", use_container_width=True, type="primary"):
             delete_session(del_id)
+            reset_rate_limit(del_id)
             st.session_state.delete_confirm = None
             if del_id == st.session_state.session_id:
                 new_chat()
@@ -728,131 +561,277 @@ def show_delete_dialog():
 
 with st.sidebar:
     st.markdown(
-        '<div class="brand"><div class="brand-mark">\u2727</div><div><div class="brand-name">Agentic RAG</div><div class="brand-subtitle">Chatbot</div></div></div>',
+        '<div class="brand"><div class="brand-mark">✧</div><div><div class="brand-name">Agentic RAG</div><div class="brand-subtitle">Chatbot</div></div></div>',
         unsafe_allow_html=True,
     )
-    st.button("\uff0b  New Chat", on_click=new_chat, use_container_width=True)
-    search_term = st.text_input("Search conversations", placeholder="\u2315  Search conversations...", label_visibility="collapsed")
-    st.markdown('<div class="side-heading">Recent Chats</div>', unsafe_allow_html=True)
-    matching_history = [
-        item for item in conversation_history(get_client_id())
-        if search_term.lower() in (item["title"] + " " + item["preview"]).lower()
-    ]
-    if matching_history:
-        # Render chat cards as styled HTML
-        html_cards = '<div class="chat-history-list">'
-        for item in matching_history[:10]:
-            is_active = item["id"] == st.session_state.session_id
-            title = esc(item["title"])
-            time_str = esc(human_time(item["updated"]))
-            active_class = "active" if is_active else ""
+    if not st.session_state.get("user"):
+        auth_mode_label = "☁️ Supabase" if is_supabase_configured() else "🔒 Local SQLite"
+        st.info(f"Please sign in or create an account to start.\n\n**Auth Mode:** {auth_mode_label}")
+    else:
+        st.button("＋  New Chat", on_click=new_chat, use_container_width=True)
+        search_term = st.text_input("Search conversations", placeholder="⌕  Search conversations...", label_visibility="collapsed")
+        st.markdown('<div class="side-heading">Recent Chats</div>', unsafe_allow_html=True)
+        user_id = st.session_state.user.get("id")
+        matching_history = [
+            item for item in conversation_history(user_id=user_id)
+            if search_term.lower() in (item["title"] + " " + item["preview"]).lower()
+        ]
+        if matching_history:
+            # Render chat cards as styled HTML
+            html_cards = '<div class="chat-history-list">'
+            for item in matching_history[:10]:
+                is_active = item["id"] == st.session_state.session_id
+                title = esc(item["title"])
+                time_str = esc(human_time(item["updated"]))
+                active_class = "active" if is_active else ""
 
-            html_cards += textwrap.dedent(f"""\
-                <div class="chat-card {active_class}" data-id="{item['id']}">
-                    <div class="chat-card-content">
-                        <div class="chat-title">{title}</div>
-                        <div class="chat-time">&bull; {time_str}</div>
+                html_cards += textwrap.dedent(f"""\
+                    <div class="chat-card {active_class}" data-id="{item['id']}">
+                        <div class="chat-card-content">
+                            <div class="chat-title">{title}</div>
+                            <div class="chat-time">&bull; {time_str}</div>
+                        </div>
+                        <div class="chat-delete" title="Delete conversation">✕</div>
                     </div>
-                    <div class="chat-delete" title="Delete conversation">✕</div>
-                </div>
-            """)
-        html_cards += '</div>'
-        st.markdown(html_cards, unsafe_allow_html=True)
+                """)
+            html_cards += '</div>'
+            st.markdown(html_cards, unsafe_allow_html=True)
 
-        # Hidden Streamlit buttons for both select and delete
-        for item in matching_history[:10]:
-            if st.button(f"HIDDEN_SEL_{item['id']}", key=f"chat_{item['id']}"):
-                st.query_params["session_id"] = item["id"]
-                st.rerun()
-            if st.button(f"HIDDEN_DEL_{item['id']}", key=f"del_{item['id']}"):
-                st.session_state.delete_confirm = item["id"]
-                st.rerun()
+            # Hidden Streamlit buttons for both select and delete
+            for item in matching_history[:10]:
+                if st.button(f"HIDDEN_SEL_{item['id']}", key=f"chat_{item['id']}"):
+                    st.query_params["session_id"] = item["id"]
+                    st.rerun()
+                if st.button(f"HIDDEN_DEL_{item['id']}", key=f"del_{item['id']}"):
+                    st.session_state.delete_confirm = item["id"]
+                    st.rerun()
 
-        # JavaScript: hide hidden buttons & attach live event-delegation click handler
-        st.html(
-            """
-        <script>
-            function initChatCardListeners() {
-                document.querySelectorAll('button').forEach(btn => {
-                    const t = btn.textContent || '';
-                    const label = btn.getAttribute('aria-label') || '';
-                    if (t.startsWith('HIDDEN_SEL_') || t.startsWith('HIDDEN_DEL_') || t.startsWith('HIDDEN_STOP_ACTION') || t.includes('HIDDEN_STOP_ACTION') || label.includes('HIDDEN_STOP_ACTION')) {
-                        const el = btn.closest('[data-testid="stElementContainer"]') || btn.closest('[data-testid="stButton"]') || btn;
-                        if (el) {
-                            el.style.setProperty('position', 'fixed', 'important');
-                            el.style.setProperty('top', '-9999px', 'important');
-                            el.style.setProperty('left', '-9999px', 'important');
-                            el.style.setProperty('width', '1px', 'important');
-                            el.style.setProperty('height', '1px', 'important');
-                            el.style.setProperty('opacity', '0', 'important');
-                            el.style.setProperty('display', 'block', 'important');
+            # JavaScript: hide hidden buttons & attach live event-delegation click handler
+            st.html(
+                """
+            <script>
+                function initChatCardListeners() {
+                    document.querySelectorAll('button').forEach(btn => {
+                        const t = btn.textContent;
+                        if (t.startsWith('HIDDEN_SEL_') || t.startsWith('HIDDEN_DEL_')) {
+                            const el = btn.closest('[data-testid="stButton"]');
+                            if (el) el.style.display = 'none';
                         }
-                        btn.disabled = false;
-                        btn.style.setProperty('pointer-events', 'auto', 'important');
-                    }
-                });
-                const container = document.querySelector('.chat-history-list');
-                if (container && !container.dataset.delegated) {
-                    container.dataset.delegated = 'true';
-                    container.addEventListener('click', (e) => {
-                        const delBtn = e.target.closest('.chat-delete');
-                        if (delBtn) {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            const card = delBtn.closest('.chat-card');
+                    });
+                    const container = document.querySelector('.chat-history-list');
+                    if (container && !container.dataset.delegated) {
+                        container.dataset.delegated = 'true';
+                        container.addEventListener('click', (e) => {
+                            const delBtn = e.target.closest('.chat-delete');
+                            if (delBtn) {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                const card = delBtn.closest('.chat-card');
+                                if (card) {
+                                    const id = card.getAttribute('data-id');
+                                    const btns = document.querySelectorAll('button');
+                                    const targetBtn = Array.from(btns).find(b => b.textContent === 'HIDDEN_DEL_' + id);
+                                    if (targetBtn) targetBtn.click();
+                                }
+                                return;
+                            }
+                            const card = e.target.closest('.chat-card');
                             if (card) {
                                 const id = card.getAttribute('data-id');
                                 const btns = document.querySelectorAll('button');
-                                const targetBtn = Array.from(btns).find(b => b.textContent === 'HIDDEN_DEL_' + id);
+                                const targetBtn = Array.from(btns).find(b => b.textContent === 'HIDDEN_SEL_' + id);
                                 if (targetBtn) targetBtn.click();
                             }
-                            return;
-                        }
-                        const card = e.target.closest('.chat-card');
-                        if (card) {
-                            const id = card.getAttribute('data-id');
-                            const btns = document.querySelectorAll('button');
-                            const targetBtn = Array.from(btns).find(b => b.textContent === 'HIDDEN_SEL_' + id);
-                            if (targetBtn) targetBtn.click();
-                        }
-                    });
+                        });
+                    }
                 }
-            }
-            initChatCardListeners();
-            setTimeout(initChatCardListeners, 80);
-        </script>
-        """,
-            unsafe_allow_javascript=True,
-        )
-    else:
-        st.markdown('<div class="empty-history">No saved conversations yet.</div>', unsafe_allow_html=True)
+                initChatCardListeners();
+                setTimeout(initChatCardListeners, 80);
+            </script>
+            """,
+                unsafe_allow_javascript=True,
+            )
+        else:
+            st.markdown('<div class="empty-history">No saved conversations yet.</div>', unsafe_allow_html=True)
 
-    used, remaining, reset_min = rate_limit_status(get_client_id())
-    pct = int((remaining / 10) * 100)
-    subtext = f"Resets in {reset_min} min" if remaining < 10 else "10 requests / 1 hour limit"
-    st.markdown(
-        f'''
-        <div class="sidebar-quota-card">
-          <div class="quota-header">
-            <span class="quota-title">⚡ Session Quota</span>
-            <span class="quota-count">{remaining} / 10 Left</span>
-          </div>
-          <div class="quota-progress-bar">
-            <div class="quota-progress-fill" style="width: {pct}%;"></div>
-          </div>
-          <div class="quota-subtext">{subtext}</div>
-        </div>
-        ''',
-        unsafe_allow_html=True,
-    )
+        user = st.session_state.user
+        user_email = user.get("email", "user@example.com")
+        user_name = user.get("name") or user_email.split("@")[0].capitalize()
+        initials = user_name[:2].upper() if user_name else "U"
+        provider_badge = "☁️ Supabase" if user.get("provider") == "supabase" else "🔒 Local"
 
-    st.markdown('<div class="profile"><div class="profile-avatar">MB</div><div><div style="font-size:13px;font-weight:600;">Muhammad Bilal</div><div style="font-size:11px;color:#71717a;">mbilal@example.com</div></div></div>', unsafe_allow_html=True)
+        # ChatGPT-style profile dropup menu at bottom of sidebar
+        with st.popover(f"👤  {user_name}  ▾", use_container_width=True):
+            st.markdown(
+                f"""
+                <div style="display:flex; align-items:center; gap:12px; padding:4px 0 10px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                  <div style="width:40px; height:40px; border-radius:50%; background:rgba(249,115,22,0.15); border:1px solid #f97316; display:grid; place-items:center; font-weight:700; color:#ff7a00; font-size:15px;">
+                    {esc(initials)}
+                  </div>
+                  <div style="overflow:hidden;">
+                    <div style="font-size:14px; font-weight:600; color:#f4f4f5; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">{esc(user_name)}</div>
+                    <div style="font-size:11px; color:#a1a1aa; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">{esc(user_email)}</div>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 12px; font-size:12px;">
+                  <span style="color:#71717a;">Auth Provider</span>
+                  <span style="padding:2px 8px; border-radius:8px; background:rgba(255,115,0,0.12); color:#ff8800; border:1px solid rgba(255,115,0,0.25); font-weight:500; font-size:11px;">{provider_badge}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown('<div style="font-size:12px; font-weight:600; color:#d4d4d8; margin:6px 0 2px;">Account Details</div>', unsafe_allow_html=True)
+            edit_name_val = st.text_input("Display Name", value=user_name, key="sidebar_edit_name_input", label_visibility="collapsed")
+            if st.button("💾 Update Name", key="btn_save_name_sidebar", use_container_width=True):
+                if edit_name_val.strip() and edit_name_val.strip() != user_name:
+                    if update_user_name(user, edit_name_val.strip()):
+                        st.session_state.user["name"] = edit_name_val.strip()
+                        st.toast("Profile name updated!", icon="✨")
+                        st.rerun()
+                    else:
+                        st.error("Could not update name.")
+
+            st.markdown('<div style="height:1px; background:rgba(255,255,255,0.08); margin:10px 0 8px;"></div>', unsafe_allow_html=True)
+            if st.button("🚪 Sign Out", key="sidebar_popover_logout_btn", use_container_width=True, type="secondary"):
+                logout_user(user.get("token", ""))
+                st.session_state.user = None
+                st.rerun()
 
 
 # Delete confirmation modal (overlay at top of screen)
 if st.session_state.get("delete_confirm"):
     show_delete_dialog()
 
+
+# Authentication Gate
+if not st.session_state.get("user"):
+    # Check for OAuth callback access token in query parameters
+    if st.query_params.get("access_token"):
+        oauth_token = st.query_params.get("access_token")
+        authed_user = validate_token(oauth_token)
+        if authed_user:
+            st.session_state.user = authed_user
+            st.query_params.clear()
+            st.rerun()
+
+    auth_badge = "☁️ Supabase Cloud Active" if is_supabase_configured() else "🔒 Local SQLite Mode"
+    google_oauth_url = get_google_auth_url(redirect_uri="https://agentic-rag-chat.streamlit.app/")
+
+    st.markdown(
+        f"""
+        <div style="max-width: 480px; margin: 30px auto 14px; text-align: center;">
+          <div style="width: 56px; height: 56px; margin: 0 auto 16px; display: grid; place-items: center; border: 1px solid #f97316; border-radius: 18px; color: #ff7a00; font-size: 26px; box-shadow: 0 0 28px rgba(249,115,22,0.3); background: rgba(249,115,22,0.05);">✦</div>
+          <h1 style="font-size: 30px; font-weight: 700; color: #f5f5f5; margin-bottom: 6px; letter-spacing: -0.5px;">Welcome to <span style="color:#ff7a00;">Agentic RAG</span></h1>
+          <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 10px;">Your enterprise research assistant with deep retrieval & reasoning.</p>
+          <span style="font-size: 11px; padding: 4px 12px; border-radius: 12px; background: rgba(255,115,0,0.1); border: 1px solid rgba(255,115,0,0.3); color: #ff8800; font-weight: 500;">{auth_badge}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    auth_col1, auth_col2, auth_col3 = st.columns([1, 2, 1])
+    with auth_col2:
+        # Google OAuth Sign-in Button
+        if is_supabase_configured() and google_oauth_url:
+            st.markdown(
+                f"""
+                <a href="{google_oauth_url}" target="_self" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:11px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); border-radius:12px; color:#f4f4f5; font-size:14px; font-weight:500; transition:all 0.2s ease; margin-bottom:12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Continue with Google</span>
+                </a>
+                <div style="display:flex; align-items:center; margin:12px 0 16px; color:#71717a; font-size:12px;">
+                  <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+                  <span style="padding:0 12px; letter-spacing:0.5px; text-transform:uppercase; font-size:11px;">or continue with email</span>
+                  <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        tab_login, tab_signup = st.tabs(["🔑 Sign In", "✨ Create Account"])
+
+        with tab_login:
+            with st.form("login_form"):
+                login_email = st.text_input("Email address", placeholder="you@example.com", key="login_email_input")
+                login_password = st.text_input("Password", type="password", placeholder="••••••••", key="login_pwd_input")
+                login_submitted = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+
+                if login_submitted:
+                    try:
+                        user_info = login_user(login_email, login_password)
+                        st.session_state.user = user_info
+                        st.success(f"Welcome back, {user_info.get('name') or user_info['email']}!")
+                        st.rerun()
+                    except ValueError as err:
+                        st.error(str(err))
+
+        with tab_signup:
+            signup_name = st.text_input("Full Name", placeholder="e.g. Muhammad Bilal", key="signup_name_input")
+            signup_email = st.text_input("Email address", placeholder="you@example.com", key="signup_email_input")
+            signup_password = st.text_input("Create Password", type="password", placeholder="At least 8 characters", key="signup_pwd_input")
+
+            # Real-time Password Strength Meter
+            strength = evaluate_password_strength(signup_password)
+            if signup_password:
+                st.markdown(
+                    f"""
+                    <div style="margin: 6px 0 10px;">
+                      <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+                        <span style="color:#a1a1aa;">Password Strength</span>
+                        <span style="color:{strength['color']}; font-weight:600;">{strength['label']}</span>
+                      </div>
+                      <div style="background: rgba(255,255,255,0.08); height: 5px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: {strength['percent']}%; background: {strength['color']}; height: 100%; transition: width 0.3s ease;"></div>
+                      </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; margin-bottom: 12px; padding: 8px 10px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;">
+                      <div style="color: {'#10b981' if strength['criteria']['length'] else '#71717a'};">
+                        {'✓' if strength['criteria']['length'] else '✕'} 8+ characters
+                      </div>
+                      <div style="color: {'#10b981' if strength['criteria']['uppercase'] else '#71717a'};">
+                        {'✓' if strength['criteria']['uppercase'] else '✕'} Uppercase (A-Z)
+                      </div>
+                      <div style="color: {'#10b981' if strength['criteria']['lowercase'] else '#71717a'};">
+                        {'✓' if strength['criteria']['lowercase'] else '✕'} Lowercase (a-z)
+                      </div>
+                      <div style="color: {'#10b981' if strength['criteria']['digit'] else '#71717a'};">
+                        {'✓' if strength['criteria']['digit'] else '✕'} Number (0-9)
+                      </div>
+                      <div style="color: {'#10b981' if strength['criteria']['special'] else '#71717a'}; grid-column: span 2;">
+                        {'✓' if strength['criteria']['special'] else '✕'} Special symbol (!@#$%^&*)
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            signup_confirm = st.text_input("Confirm Password", type="password", placeholder="••••••••", key="signup_pwd_confirm")
+
+            if st.button("Create Account", key="btn_create_account", use_container_width=True, type="primary"):
+                if not signup_email:
+                    st.error("Please enter a valid email address.")
+                elif not signup_password:
+                    st.error("Please enter a password.")
+                elif signup_password != signup_confirm:
+                    st.error("Passwords do not match.")
+                elif not strength["is_valid"]:
+                    st.error("Password is too weak. Please satisfy at least 4 security requirements.")
+                else:
+                    try:
+                        user_info = signup_user(signup_email, signup_password, full_name=signup_name, enforce_strength=True)
+                        st.session_state.user = user_info
+                        st.success(f"Account created! Welcome, {user_info.get('name') or user_info['email']}!")
+                        st.rerun()
+                    except ValueError as err:
+                        st.error(str(err))
+
+    st.stop()
 
 document_count = len(st.session_state.uploaded_file_names) + len(st.session_state.ingested_urls)
 document_label = f"{document_count} Document{'s' if document_count != 1 else ''}"
@@ -864,10 +843,15 @@ st.markdown(
       <h1>Agentic <span>RAG</span> Chatbot</h1>
       <p>Your AI research assistant, powered by retrieval and reasoning.</p>
       <div class="badges"><span class="badge"><i>♢</i>Guardrails Enabled</span><span class="badge"><i>♙</i>Agent Mode</span><span class="badge"><i>▧</i>{document_label}</span>{chunk_badge}</div>
+      <div style="margin-top: 14px; color: #a1a1aa; font-size: 12px;">Runtime: {RUNTIME_CONFIG['app_env']} | Active model: {RUNTIME_CONFIG['groq_model']}</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+if startup_warnings:
+    for warning in startup_warnings:
+        st.warning(warning)
 
 conversation = st.container()
 with conversation:
@@ -919,13 +903,11 @@ with conversation:
                 )
             # Run RAGAS evaluation inline if this message is pending
             elif st.session_state.get("ragas_pending") == msg_idx:
-                from rag_agent import evaluate_ragas
+                from core.rag import evaluate_ragas
                 meta = message.get("metadata", {})
                 question = meta.get("question", "")
                 answer_text = message.get("content", "")
                 context = meta.get("context_used", "")
-                if not context:
-                    context = meta.get("trace", {}).get("context_snippet", "")
                 if not question:
                     for i in range(msg_idx - 1, -1, -1):
                         prev = st.session_state.messages[i]
@@ -933,33 +915,29 @@ with conversation:
                             question = prev["content"]
                             break
                 if not context:
-                    st.warning("⚠️ RAGAS evaluation requires document context. Please upload a document or URL first — without retrieved context, faithfulness and relevancy scores cannot be computed.")
+                    st.warning("Cannot evaluate: no retrieved context.")
                 elif not question:
-                    st.warning("⚠️ Cannot evaluate: question text not found.")
+                    st.warning("Cannot evaluate: question not found.")
                 else:
-                    prog = st.progress(0.1, text="📊 Computing RAGAS evaluation metrics...")
-                    scores, err_msg = evaluate_ragas(
+                    prog = st.progress(0.0, text="\U0001f4ca Computing Faithfulness...")
+                    scores = evaluate_ragas(
                         question, answer_text, context,
-                        progress_callback=lambda p, label: prog.progress(p, text=f"📊 {label}"),
+                        progress_callback=lambda p, label: prog.progress(p, text=f"\U0001f4ca {label}"),
                     )
                     if scores:
-                        prog.progress(1.0, text="✅ Complete")
+                        prog.progress(1.0, text="\u2705 Complete")
                         st.session_state.ragas_scores[msg_idx] = scores
-                        _save()
                     else:
-                        st.error(f"⚠️ RAGAS evaluation failed: {err_msg or 'Unknown error'}")
+                        st.markdown(
+                            '<div class="ragas-progress-text" style="color:#ef4444;">\u26a0\ufe0f RAGAS evaluation failed</div>',
+                            unsafe_allow_html=True,
+                        )
                 st.session_state.ragas_pending = None
                 st.rerun()
             else:
-                # Only show the Evaluate button when document context is available
-                meta = message.get("metadata", {})
-                has_context = bool(meta.get("context_used") or meta.get("trace", {}).get("context_snippet"))
-                if has_context:
-                    if st.button("\U0001f4ca Evaluate", key=f"ragas_{msg_idx}", help="Run RAGAS evaluation on this response"):
-                        st.session_state.ragas_pending = msg_idx
-                        st.rerun()
-                else:
-                    st.caption("ℹ️ RAGAS evaluation is only available for responses based on uploaded documents.")
+                if st.button("\U0001f4ca Evaluate", key=f"ragas_{msg_idx}", help="Run RAGAS evaluation on this response"):
+                    st.session_state.ragas_pending = msg_idx
+                    st.rerun()
     streaming_placeholder = st.empty()
 
 
@@ -970,21 +948,6 @@ user_input = st.chat_input(
 )
 
 if user_input:
-    if st.session_state.get("processing"):
-        st.session_state.stop_requested = True
-        if st.session_state.get("latest_partial_response"):
-            partial = st.session_state.latest_partial_response
-            if partial.get("content") and partial["content"].strip():
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": partial["content"],
-                    "metadata": partial.get("metadata", {})
-                })
-            st.session_state.latest_partial_response = None
-        st.session_state.processing = None
-        st.session_state.active_future = None
-        _save()
-        st.rerun()
     uploaded = []
     for file in user_input.files or []:
         uploaded.append({"name": file.name, "type": Path(file.name).suffix.lstrip(".").upper() or "FILE", "size": format_file_size(file.size)})
@@ -995,20 +958,17 @@ if user_input:
     if prompt or uploaded:
         # Rate-limit only actual questions (prompts), not pure uploads.
         if prompt:
-            allowed, retry_after = check_rate_limit(get_client_id())
+            allowed, retry_after = check_rate_limit(st.session_state.session_id)
             if not allowed:
-                time_str = format_seconds_human(retry_after)
                 st.toast(
                     f"⏳ You're sending questions too quickly. "
-                    f"Please wait {time_str} and try again.",
+                    f"Please wait {int(retry_after)}s and try again.",
                     icon="⏳",
                 )
                 st.stop()
         st.session_state.messages.append(
             {"role": "user", "content": prompt, "files": uploaded, "timestamp": datetime.now().strftime("%I:%M %p").lstrip("0")}
         )
-        st.session_state.stop_requested = False
-        st.session_state.latest_partial_response = None
         st.session_state.processing = {"files": user_input.files, "prompt": prompt, "url": pending_url}
         _save()
         st.rerun()
@@ -1018,23 +978,6 @@ if st.session_state.get("processing"):
     import asyncio
 
     task = st.session_state.processing
-
-    if st.button("HIDDEN_STOP_ACTION", key="hidden_stop_action_btn"):
-        st.session_state.stop_requested = True
-        if st.session_state.get("latest_partial_response"):
-            partial = st.session_state.latest_partial_response
-            if partial.get("content") and partial["content"].strip():
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": partial["content"],
-                    "metadata": partial.get("metadata", {})
-                })
-            st.session_state.latest_partial_response = None
-        st.session_state.processing = None
-        st.session_state.active_future = None
-        _save()
-        st.rerun()
-
     status = st.empty()
 
     # Pre-render initial status bar INSTANTLY (0ms) so user never sees a blank gap
@@ -1049,6 +992,8 @@ if st.session_state.get("processing"):
         status.markdown(render_indexing_status(label), unsafe_allow_html=True)
 
     try:
+        from core.rag import process_uploaded_files, process_url, run_agent_pipeline, get_qdrant_vector_store
+
         if task.get("files") or task.get("url"):
             if task.get("files"):
                 status.markdown(render_indexing_status("Reading uploaded files..."), unsafe_allow_html=True)
@@ -1058,8 +1003,9 @@ if st.session_state.get("processing"):
                     persist_directory=str(session_path(st.session_state.session_id) / "qdrant_db"),
                     progress_callback=indexing_progress,
                 ))
-                if count:
+                if store is not None:
                     st.session_state.vector_store = store
+                if count:
                     st.session_state.chunk_count += count
                     st.session_state.uploaded_file_names.extend(file.name for file in task["files"])
             if task.get("url"):
@@ -1069,13 +1015,20 @@ if st.session_state.get("processing"):
                     persist_directory=str(session_path(st.session_state.session_id) / "qdrant_db"),
                     progress_callback=indexing_progress,
                 ))
-                if count:
+                if store is not None:
                     st.session_state.vector_store = store
+                if count:
                     st.session_state.chunk_count += count
                     st.session_state.ingested_urls.append(task["url"])
         if task.get("prompt"):
-            current_step = st.session_state.get("pipeline_step", 0)
-            status.markdown(render_reasoning(current_step), unsafe_allow_html=True)
+            if st.session_state.vector_store is None:
+                db_dir = session_path(st.session_state.session_id) / "qdrant_db"
+                if db_dir.exists():
+                    try:
+                        st.session_state.vector_store = get_qdrant_vector_store(str(db_dir))
+                    except Exception:
+                        pass
+            status.markdown(render_reasoning(0), unsafe_allow_html=True)
             history = [
                 {
                     "role": message["role"],
@@ -1092,61 +1045,29 @@ if st.session_state.get("processing"):
             })
 
             def on_step(step_idx, _node_name):
-                st.session_state.pipeline_step = step_idx
+                status.markdown(render_reasoning(step_idx), unsafe_allow_html=True)
 
-            if "active_future" not in st.session_state or st.session_state.active_future is None:
-                st.session_state.pipeline_step = 0
-                st.session_state.active_future = run_async_in_thread(
-                    run_agent_pipeline,
-                    st.session_state.vector_store,
-                    history,
-                    st.session_state.uploaded_file_names,
-                    st.session_state.ingested_urls,
-                    session_dir=str(session_path(st.session_state.session_id)),
-                    on_step=on_step,
-                )
+            answer, metadata = asyncio.run(run_agent_pipeline(
+                st.session_state.vector_store,
+                history,
+                st.session_state.uploaded_file_names,
+                st.session_state.ingested_urls,
+                session_dir=str(session_path(st.session_state.session_id)),
+                on_step=on_step,
+            ))
 
-            future = st.session_state.active_future
-            if future:
-                if not future.done():
-                    time.sleep(0.06)
-                    st.rerun()
-                else:
-                    try:
-                        answer, metadata = future.result()
-                    except Exception as exc:
-                        answer, metadata = f"I ran into an error while processing that request: {exc}", {}
-                    st.session_state.active_future = None
-                    status.empty()
-                    if not st.session_state.get("stop_requested"):
-                        partial_answer = stream_text(answer, metadata, streaming_placeholder)
-                        if partial_answer and partial_answer.strip():
-                            st.session_state.messages.append({"role": "assistant", "content": partial_answer, "metadata": metadata})
-                    else:
-                        if st.session_state.get("latest_partial_response"):
-                            partial = st.session_state.latest_partial_response
-                            if partial.get("content") and partial["content"].strip():
-                                st.session_state.messages.append({
-                                    "role": "assistant",
-                                    "content": partial["content"],
-                                    "metadata": partial.get("metadata", {})
-                                })
-                    st.session_state.latest_partial_response = None
-                    st.session_state.processing = None
-                    _save()
-                    st.rerun()
+            status.empty()
+            stream_text(answer, metadata, streaming_placeholder)
+            st.session_state.messages.append({"role": "assistant", "content": answer, "metadata": metadata})
         elif task.get("files") or task.get("url"):
             status.empty()
             notice = "Your document has been indexed. What would you like to know about it?"
-            if not st.session_state.get("stop_requested"):
-                partial_notice = stream_text(notice, {}, streaming_placeholder)
-                st.session_state.messages.append({"role": "assistant", "content": partial_notice, "metadata": {}})
-            st.session_state.processing = None
-            _save()
-            st.rerun()
+            stream_text(notice, {}, streaming_placeholder)
+            st.session_state.messages.append({"role": "assistant", "content": notice, "metadata": {}})
     except Exception as exc:
         status.empty()
         st.session_state.messages.append({"role": "assistant", "content": f"I ran into an error while processing that request: {exc}", "metadata": {}})
+    finally:
         st.session_state.processing = None
         _save()
         st.rerun()

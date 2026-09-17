@@ -1,0 +1,15 @@
+name: Keep Streamlit Alive
+
+on:
+  schedule:
+    # Run every 14 minutes (Streamlit sleeps after ~15-20 min of inactivity)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual trigger from Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit Health Endpoint
+        run: |
+          curl -sL --max-time 30 "https://agentic-rag-chat.streamlit.app/_stcore/health" -o /dev/null -w "HTTP Status: %{http_code}\n"
