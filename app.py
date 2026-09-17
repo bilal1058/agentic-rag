@@ -739,6 +739,14 @@ if not st.session_state.get("user"):
             st.query_params.clear()
             st.rerun()
 
+    # Clearable banner for OAuth errors (e.g. cancelled logins or bad state)
+    if st.query_params.get("error") or st.query_params.get("error_description"):
+        err_msg = st.query_params.get("error_description") or st.query_params.get("error")
+        st.warning(f"⚠️ Sign-in notice: {err_msg}")
+        if st.button("🔄 Clear & Try Again"):
+            st.query_params.clear()
+            st.rerun()
+
     auth_badge = "☁️ Supabase Cloud Active" if is_supabase_configured() else "🔒 Local SQLite Mode"
     configured_app_url = os.environ.get("APP_URL", "").strip()
     if configured_app_url:
