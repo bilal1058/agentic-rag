@@ -782,7 +782,7 @@ if not st.session_state.get("user"):
         if is_supabase_configured() and google_oauth_url:
             st.markdown(
                 f"""
-                <a href="{google_oauth_url}" target="_self" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:11px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); border-radius:12px; color:#f4f4f5; font-size:14px; font-weight:500; transition:all 0.2s ease; margin-bottom:12px;">
+                <a href="{google_oauth_url}" target="_top" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:11px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); border-radius:12px; color:#f4f4f5; font-size:14px; font-weight:500; transition:all 0.2s ease; margin-bottom:12px;">
                   <svg width="18" height="18" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
