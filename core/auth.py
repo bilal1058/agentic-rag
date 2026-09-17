@@ -179,6 +179,32 @@ class SupabaseAuth:
             logger.warning("Supabase update_user error: %s", exc)
             return False
 
+    def get_user(self, token: str) -> dict[str, Any] | None:
+        if not token:
+            return None
+        endpoint = f"{self.url}/auth/v1/user"
+        headers = dict(self.headers)
+        headers["Authorization"] = f"Bearer {token}"
+        try:
+            with httpx.Client(timeout=6.0) as client:
+                resp = client.get(endpoint, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    meta = data.get("user_metadata") or {}
+                    display_name = meta.get("full_name") or meta.get("name") or (data.get("email") or "").split("@")[0].capitalize()
+                    return {
+                        "id": data.get("id"),
+                        "username": data.get("email"),
+                        "email": data.get("email"),
+                        "name": display_name,
+                        "avatar_url": meta.get("avatar_url") or "",
+                        "token": token,
+                        "provider": "supabase",
+                    }
+        except Exception as exc:
+            logger.warning("Supabase get_user error: %s", exc)
+        return None
+
     def get_oauth_url(self, provider: str = "google", redirect_to: str = "") -> str:
         query = f"provider={provider}"
         if redirect_to:
@@ -447,9 +473,18 @@ def issue_token(user_id: int, expiry_seconds: int = 86400) -> str:
 def validate_token(token: str) -> dict[str, Any] | None:
     if not token:
         return None
+
+    # 1. Try Supabase token verification first if configured
+    sb_client = _get_supabase_client()
+    if sb_client:
+        sb_user = sb_client.get_user(token)
+        if sb_user:
+            return sb_user
+
+    # 2. Fallback to local SQLite token validation
     with _connect() as conn:
         row = conn.execute(
-            "SELECT u.id, u.username, ut.token, ut.expires_at FROM user_tokens ut JOIN users u ON u.id = ut.user_id WHERE ut.token = ?",
+            "SELECT u.id, u.username, u.full_name, ut.token, ut.expires_at FROM user_tokens ut JOIN users u ON u.id = ut.user_id WHERE ut.token = ?",
             (token,),
         ).fetchone()
     if row is None:
@@ -460,7 +495,14 @@ def validate_token(token: str) -> dict[str, Any] | None:
         return None
     if expires_at and expires_at < int(time.time() * 1000):
         return None
-    return {"id": row["id"], "username": row["username"], "token": row["token"]}
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "email": row["username"],
+        "name": row["full_name"] or row["username"],
+        "token": row["token"],
+        "provider": "local",
+    }
 
 
 def logout_token(token: str) -> None:

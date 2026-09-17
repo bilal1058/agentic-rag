@@ -15,6 +15,7 @@ chroma_db/
 qdrant_db/
 sessions/
 data/
+logs/
 *.db
 *.sqlite3
 *.pdf

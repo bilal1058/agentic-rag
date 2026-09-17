@@ -706,6 +706,30 @@ if st.session_state.get("delete_confirm"):
 
 # Authentication Gate
 if not st.session_state.get("user"):
+    # Client-side bridge: transfer #access_token from OAuth URL hash to query params so Streamlit can read it
+    st.html(
+        """
+        <script>
+        (function() {
+            if (window.location.hash && window.location.hash.includes('access_token=')) {
+                try {
+                    const hash = window.location.hash.substring(1);
+                    const params = new URLSearchParams(hash);
+                    const token = params.get('access_token');
+                    if (token) {
+                        const currentParams = new URLSearchParams(window.location.search);
+                        currentParams.set('access_token', token);
+                        window.location.replace(window.location.pathname + '?' + currentParams.toString());
+                    }
+                } catch(e) {
+                    console.error('Failed to parse OAuth hash token:', e);
+                }
+            }
+        })();
+        </script>
+        """
+    )
+
     # Check for OAuth callback access token in query parameters
     if st.query_params.get("access_token"):
         oauth_token = st.query_params.get("access_token")
@@ -716,7 +740,14 @@ if not st.session_state.get("user"):
             st.rerun()
 
     auth_badge = "☁️ Supabase Cloud Active" if is_supabase_configured() else "🔒 Local SQLite Mode"
-    google_oauth_url = get_google_auth_url(redirect_uri="https://agentic-rag-chat.streamlit.app/")
+    configured_app_url = os.environ.get("APP_URL", "").strip()
+    if configured_app_url:
+        redirect_uri = configured_app_url
+    elif os.environ.get("APP_ENV") == "production":
+        redirect_uri = "https://agentic-rag-chat.streamlit.app/"
+    else:
+        redirect_uri = "http://localhost:8501/"
+    google_oauth_url = get_google_auth_url(redirect_uri=redirect_uri)
 
     st.markdown(
         f"""
