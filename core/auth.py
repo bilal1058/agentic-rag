@@ -209,7 +209,7 @@ class SupabaseAuth:
         query = f"provider={provider}"
         if redirect_to:
             import urllib.parse
-            query += f"&redirect_to={urllib.parse.quote(redirect_to)}"
+            query += f"&redirect_to={urllib.parse.quote(redirect_to, safe='')}"
         return f"{self.url}/auth/v1/authorize?{query}"
 
     def sign_out(self, token: str) -> None:

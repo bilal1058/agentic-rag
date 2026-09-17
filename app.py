@@ -743,10 +743,17 @@ if not st.session_state.get("user"):
     configured_app_url = os.environ.get("APP_URL", "").strip()
     if configured_app_url:
         redirect_uri = configured_app_url
-    elif os.environ.get("APP_ENV") == "production":
-        redirect_uri = "https://agentic-rag-chat.streamlit.app/"
     else:
-        redirect_uri = "http://localhost:8501/"
+        host = ""
+        try:
+            if hasattr(st, "context") and hasattr(st.context, "headers"):
+                host = (st.context.headers or {}).get("host", "")
+        except Exception:
+            pass
+        if host and ("localhost" in host or "127.0.0.1" in host):
+            redirect_uri = f"http://{host}/"
+        else:
+            redirect_uri = "https://agentic-rag-chat.streamlit.app/"
     google_oauth_url = get_google_auth_url(redirect_uri=redirect_uri)
 
     st.markdown(
