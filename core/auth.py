@@ -186,7 +186,7 @@ class SupabaseAuth:
         headers = dict(self.headers)
         headers["Authorization"] = f"Bearer {token}"
         try:
-            with httpx.Client(timeout=6.0) as client:
+            with httpx.Client(timeout=10.0) as client:
                 resp = client.get(endpoint, headers=headers)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -201,6 +201,8 @@ class SupabaseAuth:
                         "token": token,
                         "provider": "supabase",
                     }
+                else:
+                    logger.warning("Supabase get_user non-200: %s %s", resp.status_code, resp.text)
         except Exception as exc:
             logger.warning("Supabase get_user error: %s", exc)
         return None

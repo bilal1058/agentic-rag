@@ -696,6 +696,7 @@ with st.sidebar:
             if st.button("🚪 Sign Out", key="sidebar_popover_logout_btn", use_container_width=True, type="secondary"):
                 logout_user(user.get("token", ""))
                 st.session_state.user = None
+                st.query_params["logged_out"] = "1"
                 st.rerun()
 
 
@@ -706,28 +707,102 @@ if st.session_state.get("delete_confirm"):
 
 # Authentication Gate
 if not st.session_state.get("user"):
+    # If user just logged out, clear storage and remove the logged_out query param
+    if st.query_params.get("logged_out"):
+        st.query_params.clear()
+        st.html(
+            """
+            <script>
+            try {
+                sessionStorage.removeItem('agentic_auth_token');
+                localStorage.removeItem('agentic_auth_token');
+            } catch(e) {}
+            </script>
+            """,
+            unsafe_allow_javascript=True,
+        )
+
     # Client-side bridge: transfer #access_token from OAuth URL hash to query params so Streamlit can read it
     st.html(
         """
         <script>
         (function() {
-            if (window.location.hash && window.location.hash.includes('access_token=')) {
-                try {
-                    const hash = window.location.hash.substring(1);
-                    const params = new URLSearchParams(hash);
-                    const token = params.get('access_token');
-                    if (token) {
-                        const currentParams = new URLSearchParams(window.location.search);
-                        currentParams.set('access_token', token);
-                        window.location.replace(window.location.pathname + '?' + currentParams.toString());
-                    }
-                } catch(e) {
-                    console.error('Failed to parse OAuth hash token:', e);
+            try {
+                let hash = window.location.hash || '';
+                if (!hash && window.parent && window.parent.location) {
+                    try { hash = window.parent.location.hash || ''; } catch(e) {}
                 }
+                if (!hash && window.top && window.top.location) {
+                    try { hash = window.top.location.hash || ''; } catch(e) {}
+                }
+
+                // 1. Check for OAuth hash tokens or errors returned by Supabase
+                if (hash && (hash.includes('access_token=') || hash.includes('error='))) {
+                    const cleanHash = hash.startsWith('#') ? hash.substring(1) : hash;
+                    const hashParams = new URLSearchParams(cleanHash);
+                    const token = hashParams.get('access_token');
+                    const err = hashParams.get('error_description') || hashParams.get('error');
+
+                    let searchStr = window.location.search || '';
+                    try {
+                        if (!searchStr && window.top && window.top.location) {
+                            searchStr = window.top.location.search || '';
+                        }
+                    } catch(e) {}
+
+                    const currentParams = new URLSearchParams(searchStr);
+                    let changed = false;
+                    if (token) {
+                        try {
+                            sessionStorage.setItem('agentic_auth_token', token);
+                        } catch(e) {}
+                        currentParams.set('access_token', token);
+                        changed = true;
+                    }
+                    if (err) {
+                        currentParams.set('error', err);
+                        changed = true;
+                    }
+
+                    if (changed) {
+                        const pathname = window.location.pathname || '/';
+                        const targetUrl = pathname + '?' + currentParams.toString();
+
+                        // Immediate full-screen visual loading overlay
+                        const overlay = document.createElement('div');
+                        overlay.id = 'agentic-auth-loading';
+                        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#0e1117;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#f3f4f6;font-family:system-ui,-apple-system,sans-serif;';
+                        overlay.innerHTML = '<div style=\"width:44px;height:44px;border:3px solid rgba(249,115,22,0.25);border-top:3px solid #f97316;border-radius:50%;animation:agenticSpin 0.8s linear infinite;margin-bottom:16px;\"></div><div style=\"font-size:18px;font-weight:600;color:#f97316;\">Signing you in with Google...</div><div style=\"font-size:13px;color:#a1a1aa;margin-top:6px;\">Verifying account credentials with Supabase</div><style>@keyframes agenticSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>';
+                        document.body.appendChild(overlay);
+
+                        try {
+                            if (window.top && window.top.location && window.top.location !== window.location) {
+                                window.top.location.replace(targetUrl);
+                                return;
+                            }
+                        } catch(e) {}
+                        window.location.replace(targetUrl);
+                        return;
+                    }
+                }
+
+                // 2. Check for active session in sessionStorage if not logging out and no active query params
+                const urlParams = new URLSearchParams(window.location.search || '');
+                if (!urlParams.get('access_token') && !urlParams.get('logged_out') && !urlParams.get('error')) {
+                    const savedToken = sessionStorage.getItem('agentic_auth_token');
+                    if (savedToken) {
+                        urlParams.set('access_token', savedToken);
+                        const targetUrl = (window.location.pathname || '/') + '?' + urlParams.toString();
+                        window.location.replace(targetUrl);
+                    }
+                }
+            } catch(e) {
+                console.error('OAuth hash bridge error:', e);
             }
         })();
         </script>
-        """
+        """,
+        unsafe_allow_javascript=True,
     )
 
     # Check for OAuth callback access token in query parameters
@@ -738,6 +813,20 @@ if not st.session_state.get("user"):
             st.session_state.user = authed_user
             st.query_params.clear()
             st.rerun()
+        else:
+            st.query_params.clear()
+            st.html(
+                """
+                <script>
+                try {
+                    sessionStorage.removeItem('agentic_auth_token');
+                    localStorage.removeItem('agentic_auth_token');
+                } catch(e) {}
+                </script>
+                """,
+                unsafe_allow_javascript=True,
+            )
+            st.error("⚠️ Authentication session expired or invalid. Please sign in again.")
 
     # Clearable banner for OAuth errors (e.g. cancelled logins or bad state)
     if st.query_params.get("error") or st.query_params.get("error_description"):
@@ -782,7 +871,7 @@ if not st.session_state.get("user"):
         if is_supabase_configured() and google_oauth_url:
             st.markdown(
                 f"""
-                <a href="{google_oauth_url}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:11px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); border-radius:12px; color:#f4f4f5; font-size:14px; font-weight:500; transition:all 0.2s ease; margin-bottom:12px;">
+                <a href="{google_oauth_url}" target="_top" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:11px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); border-radius:12px; color:#f4f4f5; font-size:14px; font-weight:500; transition:all 0.2s ease; margin-bottom:12px;">
                   <svg width="18" height="18" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
