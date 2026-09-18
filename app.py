@@ -498,11 +498,11 @@ if "delete_session" in st.query_params:
     st.rerun()
 
 
-if "session_id" not in st.query_params:
+if st.session_state.get("user") and "session_id" not in st.query_params:
     st.query_params["session_id"] = str(uuid.uuid4())
 
 
-session_id = str(st.query_params["session_id"])
+session_id = str(st.query_params.get("session_id", ""))
 saved = load_session(session_id)
 if st.session_state.get("loaded_session") != session_id:
     st.session_state.loaded_session = session_id
@@ -698,6 +698,7 @@ with st.sidebar:
                 logout_user(user.get("token", ""))
                 st.session_state.user = None
                 st.session_state.just_logged_out = True
+                oauth_bridge(logout=True, key="oauth_token_logout")
                 st.rerun()
 
 
@@ -708,7 +709,21 @@ if st.session_state.get("delete_confirm"):
 
 # Authentication Gate
 if not st.session_state.get("user"):
-    # Run the native OAuth bridge component (reads OAuth hash/storage and passes token safely via postMessage)
+    # 1. Check browser cookies for persistent auth token
+    cookie_token = None
+    try:
+        if hasattr(st, "context") and hasattr(st.context, "cookies"):
+            cookie_token = (st.context.cookies or {}).get("agentic_auth_token")
+    except Exception:
+        pass
+
+    if cookie_token and not st.session_state.get("just_logged_out"):
+        cookie_user = validate_token(cookie_token)
+        if cookie_user:
+            st.session_state.user = cookie_user
+            st.rerun()
+
+    # 2. Run the native OAuth bridge component (reads OAuth hash/storage and passes token safely via postMessage)
     is_logging_out = bool(st.session_state.get("just_logged_out"))
     bridge_token = oauth_bridge(logout=is_logging_out, key="oauth_token_bridge")
     if is_logging_out:
@@ -719,10 +734,8 @@ if not st.session_state.get("user"):
         if authed_user:
             st.session_state.user = authed_user
             st.rerun()
-        else:
-            oauth_bridge(logout=True, key="oauth_token_clear")
 
-    # Check for OAuth callback access token in query parameters
+    # 3. Check for OAuth callback access token in query parameters
     if st.query_params.get("access_token"):
         oauth_token = st.query_params.get("access_token")
         authed_user = validate_token(oauth_token)

@@ -23,6 +23,19 @@ if not logger.handlers:
 os.environ.setdefault("USER_AGENT", "rag-chatbot/1.0")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
+def sync_streamlit_secrets() -> None:
+    """Sync Streamlit Cloud secrets into os.environ if present."""
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            for key, val in st.secrets.items():
+                if isinstance(val, str) and (key not in os.environ or not os.environ[key]):
+                    os.environ[key] = val
+    except Exception:
+        pass
+
+sync_streamlit_secrets()
+
 DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b"
 DEFAULT_OPENROUTER_MODEL = "inclusionai/ling-3.0-flash-vl:free"
 DEFAULT_MAX_REQUESTS_PER_MINUTE = 8
