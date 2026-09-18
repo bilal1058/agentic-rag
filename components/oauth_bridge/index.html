@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OAuth Bridge</title>
+</head>
+<body style="margin:0; padding:0; overflow:hidden; background:transparent;">
+  <script>
+  (function() {
+    // Streamlit Component Protocol helpers
+    function sendMessage(type, data) {
+      window.parent.postMessage(Object.assign({
+        isStreamlitMessage: true,
+        type: type
+      }, data || {}), "*");
+    }
+
+    // 1. Notify Streamlit that component is ready
+    sendMessage("streamlit:componentReady", { apiVersion: 1 });
+    // 2. Set height to 0 so it remains completely invisible
+    sendMessage("streamlit:setFrameHeight", { height: 0 });
+
+    function setStreamlitValue(val) {
+      sendMessage("streamlit:setComponentValue", { value: val });
+    }
+
+    function checkAndSendToken(args) {
+      // If Python passed logout=True, clear stored tokens
+      if (args && args.logout) {
+        try {
+          localStorage.removeItem("agentic_auth_token");
+          sessionStorage.removeItem("agentic_auth_token");
+        } catch(e) {}
+        return;
+      }
+
+      var token = null;
+
+      // Check 1: Parent window hash (#access_token=...)
+      try {
+        var pHash = window.parent && window.parent.location ? window.parent.location.hash : "";
+        if (pHash && pHash.includes("access_token=")) {
+          var cleanHash = pHash.startsWith("#") ? pHash.substring(1) : pHash;
+          var hashParams = new URLSearchParams(cleanHash);
+          token = hashParams.get("access_token");
+          if (token) {
+            // Clean the sensitive hash from the parent address bar without page reload
+            try {
+              if (window.parent.history && window.parent.history.replaceState) {
+                var cleanUrl = window.parent.location.pathname + window.parent.location.search;
+                window.parent.history.replaceState(null, "", cleanUrl);
+              }
+            } catch(e) {}
+          }
+        }
+      } catch(e) {
+        console.warn("OAuth bridge parent hash check:", e);
+      }
+
+      // Check 2: Current iframe window hash
+      if (!token) {
+        try {
+          var iHash = window.location.hash || "";
+          if (iHash && iHash.includes("access_token=")) {
+            var cleanIHash = iHash.startsWith("#") ? iHash.substring(1) : iHash;
+            var iParams = new URLSearchParams(cleanIHash);
+            token = iParams.get("access_token");
+          }
+        } catch(e) {}
+      }
+
+      // Check 3: Check localStorage / sessionStorage
+      if (!token) {
+        try {
+          token = localStorage.getItem("agentic_auth_token") || sessionStorage.getItem("agentic_auth_token");
+        } catch(e) {}
+      }
+
+      if (token) {
+        try {
+          localStorage.setItem("agentic_auth_token", token);
+          sessionStorage.setItem("agentic_auth_token", token);
+        } catch(e) {}
+        // Send token directly to Python backend over Streamlit's native postMessage channel
+        setStreamlitValue(token);
+      }
+    }
+
+    // Listen for render messages from Streamlit
+    window.addEventListener("message", function(event) {
+      if (event.data && event.data.type === "streamlit:render") {
+        var args = event.data.args || {};
+        checkAndSendToken(args);
+      }
+    });
+
+    // Listen for cross-tab storage updates (if user completed OAuth in a popup/tab)
+    window.addEventListener("storage", function(event) {
+      if (event.key === "agentic_auth_token" && event.newValue) {
+        setStreamlitValue(event.newValue);
+      }
+    });
+
+    // Run check immediately on load
+    setTimeout(function() {
+      checkAndSendToken({});
+    }, 100);
+  })();
+  </script>
+</body>
+</html>

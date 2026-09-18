@@ -12,4 +12,4 @@ jobs:
     steps:
       - name: Ping Streamlit Health Endpoint
         run: |
-          curl -sL --max-time 30 "https://agentic-rag-chat.streamlit.app/_stcore/health" -o /dev/null -w "HTTP Status: %{http_code}\n"
+          curl -s -m 20 "https://agentic-rag-chat.streamlit.app/" -o /dev/null -w "HTTP Status: %{http_code}\n" || true
