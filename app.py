@@ -709,31 +709,32 @@ if st.session_state.get("delete_confirm"):
 
 # Authentication Gate
 if not st.session_state.get("user"):
-    # 1. Check browser cookies for persistent auth token
-    cookie_token = None
-    try:
-        if hasattr(st, "context") and hasattr(st.context, "cookies"):
-            cookie_token = (st.context.cookies or {}).get("agentic_auth_token")
-    except Exception:
-        pass
-
-    if cookie_token and not st.session_state.get("just_logged_out"):
-        cookie_user = validate_token(cookie_token)
-        if cookie_user:
-            st.session_state.user = cookie_user
-            st.rerun()
-
-    # 2. Run the native OAuth bridge component (reads OAuth hash/storage and passes token safely via postMessage)
-    is_logging_out = bool(st.session_state.get("just_logged_out"))
-    bridge_token = oauth_bridge(logout=is_logging_out, key="oauth_token_bridge")
-    if is_logging_out:
+    # If user just logged out, actively trigger client token cleanup
+    if st.session_state.get("just_logged_out"):
+        oauth_bridge(logout=True, key="oauth_token_bridge_logout")
         st.session_state.pop("just_logged_out", None)
+    else:
+        # 1. Check browser cookies for persistent auth token
+        cookie_token = None
+        try:
+            if hasattr(st, "context") and hasattr(st.context, "cookies"):
+                cookie_token = (st.context.cookies or {}).get("agentic_auth_token")
+        except Exception:
+            pass
 
-    if bridge_token:
-        authed_user = validate_token(bridge_token)
-        if authed_user:
-            st.session_state.user = authed_user
-            st.rerun()
+        if cookie_token:
+            cookie_user = validate_token(cookie_token)
+            if cookie_user:
+                st.session_state.user = cookie_user
+                st.rerun()
+
+        # 2. Run the native OAuth bridge component (reads OAuth hash and passes token safely via postMessage)
+        bridge_token = oauth_bridge(logout=False, key="oauth_token_bridge")
+        if bridge_token:
+            authed_user = validate_token(bridge_token)
+            if authed_user:
+                st.session_state.user = authed_user
+                st.rerun()
 
     # 3. Check for OAuth callback access token in query parameters
     if st.query_params.get("access_token"):
@@ -774,24 +775,6 @@ if not st.session_state.get("user"):
 
     st.markdown(
         f"""
-        <style>
-        body.oauth-authenticating #auth-welcome-container,
-        body.oauth-authenticating #auth-google-section,
-        body.oauth-authenticating [data-testid="stTabs"],
-        body.oauth-authenticating [data-testid="stForm"],
-        body.oauth-authenticating [data-testid="stVerticalBlock"]:has([data-testid="stTabs"]) {{
-            display: none !important;
-        }}
-        body.oauth-authenticating #oauth-loading-state {{
-            display: flex !important;
-        }}
-        </style>
-        <div id="oauth-loading-state" style="display:none; flex-direction:column; align-items:center; justify-content:center; max-width:480px; margin:60px auto; text-align:center;">
-          <div style="width:50px; height:50px; border:3.5px solid rgba(249,115,22,0.2); border-top:3.5px solid #ff7a00; border-radius:50%; animation:authSpin 0.75s linear infinite; margin:0 auto 18px;"></div>
-          <h2 style="color:#f5f5f5; font-size:22px; font-weight:700; margin-bottom:8px; letter-spacing:-0.4px;">Signing you in...</h2>
-          <p style="color:#a1a1aa; font-size:14px;">Verifying your Google credentials and opening your workspace</p>
-          <style>@keyframes authSpin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}</style>
-        </div>
         <div id="auth-welcome-container" style="max-width: 480px; margin: 30px auto 14px; text-align: center;">
           <div style="width: 56px; height: 56px; margin: 0 auto 16px; display: grid; place-items: center; border: 1px solid #f97316; border-radius: 18px; color: #ff7a00; font-size: 26px; box-shadow: 0 0 28px rgba(249,115,22,0.3); background: rgba(249,115,22,0.05);">✦</div>
           <h1 style="font-size: 30px; font-weight: 700; color: #f5f5f5; margin-bottom: 6px; letter-spacing: -0.5px;">Welcome to <span style="color:#ff7a00;">Agentic RAG</span></h1>

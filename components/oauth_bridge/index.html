@@ -23,10 +23,26 @@
       sendMessage("streamlit:setComponentValue", { value: val });
     }
 
+    function removeOverlay() {
+      try {
+        if (window.parent && window.parent.document) {
+          var ov = window.parent.document.getElementById("oauth-instant-overlay");
+          if (ov) ov.remove();
+          if (window.parent.document.body) {
+            window.parent.document.body.classList.remove("oauth-authenticating");
+          }
+        }
+      } catch(e) {}
+      try {
+        var localOv = document.getElementById("oauth-instant-overlay");
+        if (localOv) localOv.remove();
+        document.body.classList.remove("oauth-authenticating");
+      } catch(e) {}
+    }
+
     function applyInstantOverlay() {
       try {
         if (window.parent && window.parent.document && window.parent.document.body) {
-          window.parent.document.body.classList.add("oauth-authenticating");
           if (!window.parent.document.getElementById("oauth-instant-overlay")) {
             var overlay = window.parent.document.createElement("div");
             overlay.id = "oauth-instant-overlay";
@@ -38,28 +54,32 @@
       } catch(e) {}
     }
 
+    function clearAllTokens() {
+      try {
+        var expCookie = "agentic_auth_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+        document.cookie = expCookie;
+        if (window.parent && window.parent.document) {
+          window.parent.document.cookie = expCookie;
+        }
+        localStorage.removeItem("agentic_auth_token");
+        sessionStorage.removeItem("agentic_auth_token");
+        if (window.parent && window.parent.location && window.parent.location.hash) {
+          try { window.parent.location.hash = ""; } catch(e) {}
+        }
+      } catch(e) {}
+      removeOverlay();
+    }
+
     function checkAndSendToken(args) {
-      // If logout requested, clear tokens and cookies
+      // If logout requested, wipe all client storage and clear overlay
       if (args && args.logout) {
-        try {
-          var expCookie = "agentic_auth_token=; path=/; max-age=0; SameSite=Lax";
-          document.cookie = expCookie;
-          if (window.parent && window.parent.document) {
-            window.parent.document.cookie = expCookie;
-            window.parent.document.body.classList.remove("oauth-authenticating");
-            var ov = window.parent.document.getElementById("oauth-instant-overlay");
-            if (ov) ov.remove();
-          }
-          localStorage.removeItem("agentic_auth_token");
-          sessionStorage.removeItem("agentic_auth_token");
-        } catch(e) {}
+        clearAllTokens();
         return;
       }
 
       var token = null;
 
       // Check 1: Parent window hash (#access_token=...)
-      // NOTE: We deliberately DO NOT call history.replaceState so Streamlit Cloud does not reload
       try {
         var pHash = window.parent && window.parent.location ? window.parent.location.hash : "";
         if (pHash && pHash.includes("access_token=")) {
@@ -68,9 +88,7 @@
           var hashParams = new URLSearchParams(cleanHash);
           token = hashParams.get("access_token");
         }
-      } catch(e) {
-        console.warn("OAuth bridge parent hash check:", e);
-      }
+      } catch(e) {}
 
       // Check 2: Current window hash
       if (!token) {
@@ -81,16 +99,6 @@
             var cleanIHash = iHash.startsWith("#") ? iHash.substring(1) : iHash;
             var iParams = new URLSearchParams(cleanIHash);
             token = iParams.get("access_token");
-          }
-        } catch(e) {}
-      }
-
-      // Check 3: Check localStorage / sessionStorage
-      if (!token) {
-        try {
-          token = localStorage.getItem("agentic_auth_token") || sessionStorage.getItem("agentic_auth_token");
-          if (token) {
-            applyInstantOverlay();
           }
         } catch(e) {}
       }
@@ -107,23 +115,11 @@
         } catch(e) {}
         // Send token to Python backend
         setStreamlitValue(token);
+      } else {
+        // No OAuth token in hash: remove any stale overlay immediately
+        removeOverlay();
       }
     }
-
-    // Immediate checks
-    checkAndSendToken({});
-    setTimeout(function() { checkAndSendToken({}); }, 0);
-    setTimeout(function() { checkAndSendToken({}); }, 50);
-
-    // Safety timeout: remove overlay after 6 seconds if token validation fails
-    setTimeout(function() {
-      try {
-        if (window.parent && window.parent.document) {
-          var ov = window.parent.document.getElementById("oauth-instant-overlay");
-          if (ov) ov.remove();
-        }
-      } catch(e) {}
-    }, 6000);
 
     // Listen for render messages from Streamlit
     window.addEventListener("message", function(event) {
@@ -133,13 +129,12 @@
       }
     });
 
-    // Cross-tab storage updates
-    window.addEventListener("storage", function(event) {
-      if (event.key === "agentic_auth_token" && event.newValue) {
-        applyInstantOverlay();
-        setStreamlitValue(event.newValue);
-      }
-    });
+    // Run hash check on initial mount
+    checkAndSendToken({});
+    setTimeout(function() { checkAndSendToken({}); }, 50);
+
+    // Safety timeout: remove overlay after 4 seconds
+    setTimeout(removeOverlay, 4000);
   })();
   </script>
 </body>
