@@ -1,5 +1,6 @@
 """Unified Authentication Service with Supabase Cloud Auth and Local SQLite fallback."""
 
+import base64
 import hashlib
 import json
 import logging
@@ -182,6 +183,35 @@ class SupabaseAuth:
     def get_user(self, token: str) -> dict[str, Any] | None:
         if not token:
             return None
+
+        # 1. Fast local JWT claim extraction (0ms latency)
+        try:
+            parts = token.split(".")
+            if len(parts) == 3:
+                payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+                claims = json.loads(base64.urlsafe_b64decode(payload_b64.encode("utf-8")))
+                exp = claims.get("exp")
+                if exp and exp < time.time():
+                    return None
+                user_id = claims.get("sub")
+                email = claims.get("email", "")
+                meta = claims.get("user_metadata") or {}
+                display_name = meta.get("full_name") or meta.get("name") or (email.split("@")[0].capitalize() if email else "User")
+                avatar_url = meta.get("avatar_url") or meta.get("picture") or ""
+                if user_id and email:
+                    return {
+                        "id": user_id,
+                        "username": email,
+                        "email": email,
+                        "name": display_name,
+                        "avatar_url": avatar_url,
+                        "token": token,
+                        "provider": "supabase",
+                    }
+        except Exception:
+            pass
+
+        # 2. Fallback to Supabase /auth/v1/user endpoint
         endpoint = f"{self.url}/auth/v1/user"
         headers = dict(self.headers)
         headers["Authorization"] = f"Bearer {token}"
@@ -476,14 +506,41 @@ def validate_token(token: str) -> dict[str, Any] | None:
     if not token:
         return None
 
-    # 1. Try Supabase token verification first if configured
+    # 1. Fast local JWT claim extraction (0ms latency for Supabase JWTs)
+    if token.count(".") == 2:
+        try:
+            parts = token.split(".")
+            payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(payload_b64.encode("utf-8")))
+            exp = claims.get("exp")
+            if exp and exp < time.time():
+                return None
+            user_id = claims.get("sub")
+            email = claims.get("email", "")
+            meta = claims.get("user_metadata") or {}
+            display_name = meta.get("full_name") or meta.get("name") or (email.split("@")[0].capitalize() if email else "User")
+            avatar_url = meta.get("avatar_url") or meta.get("picture") or ""
+            if user_id and email:
+                return {
+                    "id": user_id,
+                    "username": email,
+                    "email": email,
+                    "name": display_name,
+                    "avatar_url": avatar_url,
+                    "token": token,
+                    "provider": "supabase",
+                }
+        except Exception:
+            pass
+
+    # 2. Try Supabase client verification endpoint if configured
     sb_client = _get_supabase_client()
     if sb_client:
         sb_user = sb_client.get_user(token)
         if sb_user:
             return sb_user
 
-    # 2. Fallback to local SQLite token validation
+    # 3. Fallback to local SQLite token validation
     with _connect() as conn:
         row = conn.execute(
             "SELECT u.id, u.username, u.full_name, ut.token, ut.expires_at FROM user_tokens ut JOIN users u ON u.id = ut.user_id WHERE ut.token = ?",
