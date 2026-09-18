@@ -82,9 +82,19 @@ st.markdown(
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+@font-face {{
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}}
+
 :root {{
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Bebas Neue', 'Plus Jakarta Sans', sans-serif;
+  --font-body-heading: 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Emil Kowalski Animation Philosophy Tokens */
@@ -115,6 +125,7 @@ html, body, [class*="css"] {{
 
 h1, h2, h3, h4, .brand-name, .hero h1 {{
   font-family: var(--font-display) !important;
+  letter-spacing: 0.04em;
 }}
 
 code, pre, .trace-step-ms, .timestamp, .citation-num {{
@@ -245,10 +256,11 @@ section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{
 }}
 .brand-name {{
   color: #f8fafc;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  line-height: 1.2;
+  font-size: 25px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  text-transform: uppercase;
 }}
 .brand-subtitle {{
   color: var(--brand-orange-light);
@@ -455,11 +467,12 @@ section[data-testid="stSidebar"] .stButton > button:active {{
 }}
 .hero h1 {{
   margin: 0;
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: -1.4px;
+  font-size: 50px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
   color: #f8fafc !important;
-  line-height: 1.15;
+  line-height: 1.08;
+  text-transform: uppercase;
 }}
 .hero h1 span {{
   background: linear-gradient(135deg, #ff6a00 0%, #ffa534 100%);
@@ -1303,7 +1316,7 @@ if not st.session_state.get("user"):
         f"""
         <div id="auth-welcome-container" style="max-width: 480px; margin: 30px auto 14px; text-align: center;">
           <div class="auth-welcome-spark">✦</div>
-          <h1 style="font-family: var(--font-display); font-size: 30px; font-weight: 700; color: #f5f5f5; margin-bottom: 6px; letter-spacing: -0.5px;">Welcome to <span style="color:#ff7a00;">Agentic RAG</span></h1>
+          <h1 style="font-family: var(--font-display); font-size: 38px; font-weight: 400; color: #f5f5f5; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase;">Welcome to <span style="color:#ff7a00;">Agentic RAG</span></h1>
           <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 10px;">Your enterprise research assistant with deep retrieval & reasoning.</p>
           <span style="font-size: 11px; padding: 4px 12px; border-radius: 12px; background: rgba(255,115,0,0.1); border: 1px solid rgba(255,115,0,0.3); color: #ff8800; font-weight: 500;">{auth_badge}</span>
         </div>
