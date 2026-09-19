@@ -1,15 +1,27 @@
-name: Keep Streamlit Alive
+name: Keep Streamlit Alive & Auto-Wake
 
 on:
   schedule:
-    # Run every 14 minutes (Streamlit sleeps after ~15-20 min of inactivity)
-    - cron: '*/14 * * * *'
-  workflow_dispatch: # Allows manual trigger from Actions tab
+    # Attempt ping frequently (note: GitHub Actions cron may be queued/delayed by runner loads)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
 
 jobs:
-  ping:
+  keep_alive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Streamlit Health Endpoint
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright & Chromium
         run: |
-          curl -s -m 20 "https://agentic-rag-chat.streamlit.app/" -o /dev/null -w "HTTP Status: %{http_code}\n" || true
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Ping Streamlit & Auto-Wake if Asleep
+        run: node scripts/keep_alive.js
