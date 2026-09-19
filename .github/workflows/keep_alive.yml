@@ -1,9 +1,9 @@
-name: Keep Streamlit Alive & Auto-Wake
+name: Keep Streamlit Alive & Active Session
 
 on:
   schedule:
-    # Attempt ping frequently (note: GitHub Actions cron may be queued/delayed by runner loads)
-    - cron: '*/10 * * * *'
+    # Run every 2 hours at minute 20 (avoids top-of-the-hour GitHub queue congestion)
+    - cron: '20 */2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -23,5 +23,5 @@ jobs:
           npm install playwright
           npx playwright install --with-deps chromium
 
-      - name: Ping Streamlit & Auto-Wake if Asleep
+      - name: Establish Real Viewer Session & Auto-Wake
         run: node scripts/keep_alive.js
