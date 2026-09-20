@@ -80,6 +80,14 @@ bg_url = background_data_url()
 st.markdown(
     f"""
 <style>
+/* ==========================================================================
+   AGENTIC RAG — HIGH-END LUXURY DESIGN SYSTEM (OBSIDIAN EMBER)
+   Adhering to: design-motion-principles, high-end-visual-design,
+                awesome-claude-design, refactoring-ui, ui-ux-pro-max
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
 /* Bebas Neue - latin-ext */
 @font-face {{
   font-family: 'Bebas Neue';
@@ -117,42 +125,6 @@ st.markdown(
   src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7SUc.woff2) format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }}
-/* Inter - greek-ext (400) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7SUc.woff2) format('woff2');
-  unicode-range: U+1F00-1FFF;
-}}
-/* Inter - greek (400) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2) format('woff2');
-  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
-}}
-/* Inter - vietnamese (400) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7SUc.woff2) format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}}
-/* Inter - latin-ext (400) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2) format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}}
 /* Inter - latin (400) */
 @font-face {{
   font-family: 'Inter';
@@ -161,61 +133,6 @@ st.markdown(
   font-display: swap;
   src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}}
-
-/* Inter - cyrillic-ext (700) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7SUc.woff2) format('woff2');
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}}
-/* Inter - cyrillic (700) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7SUc.woff2) format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}}
-/* Inter - greek-ext (700) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7SUc.woff2) format('woff2');
-  unicode-range: U+1F00-1FFF;
-}}
-/* Inter - greek (700) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2) format('woff2');
-  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
-}}
-/* Inter - vietnamese (700) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7SUc.woff2) format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}}
-/* Inter - latin-ext (700) */
-@font-face {{
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2) format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }}
 /* Inter - latin (700) */
 @font-face {{
@@ -227,24 +144,6 @@ st.markdown(
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }}
 
-/* Space Mono - vietnamese (400) */
-@font-face {{
-  font-family: 'Space Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/spacemono/v17/i7dPIFZifjKcF5UAWdDRYE58RWq7.woff2) format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}}
-/* Space Mono - latin-ext (400) */
-@font-face {{
-  font-family: 'Space Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/spacemono/v17/i7dPIFZifjKcF5UAWdDRYE98RWq7.woff2) format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}}
 /* Space Mono - latin (400) */
 @font-face {{
   font-family: 'Space Mono';
@@ -255,51 +154,101 @@ st.markdown(
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }}
 
+/* --------------------------------------------------------------------------
+   DESIGN TOKENS & ATOMIC VARIABLES
+   -------------------------------------------------------------------------- */
 :root {{
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
+  /* Typographic Stacks */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Bebas Neue', var(--font-sans);
+  --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Emil Kowalski Animation Philosophy Tokens */
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Motion & Physics Curves (Emil Kowalski & Jakub Krehel) */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-fast: 140ms;
-  --duration-normal: 220ms;
-  --duration-smooth: 320ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-smooth: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-  /* Refined Palette */
-  --brand-orange: #ff7a00;
-  --brand-orange-light: #fb923c;
-  --brand-orange-glow: rgba(255, 122, 0, 0.25);
-  --brand-orange-subtle: rgba(255, 122, 0, 0.06);
+  --duration-instant: 110ms;
+  --duration-fast: 180ms;
+  --duration-normal: 260ms;
+  --duration-smooth: 360ms;
+  --duration-ambient: 4000ms;
+
+  /* Obsidian Ember Surface Hierarchy */
+  --bg-canvas: #06070a;
+  --bg-surface-glass: rgba(11, 13, 19, 0.78);
+  --bg-surface-elevated: rgba(16, 18, 26, 0.88);
+  --bg-surface-card: rgba(14, 16, 24, 0.72);
+  --bg-surface-core: rgba(10, 12, 18, 0.92);
+
+  /* Doppelrand (Double-Bezel) Architecture Tokens */
+  --bezel-outer-border: rgba(255, 255, 255, 0.08);
+  --bezel-outer-bg: rgba(255, 255, 255, 0.02);
+  --bezel-inner-highlight: inset 0 1px 1px rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --bezel-shadow-ambient: 0 16px 42px rgba(0, 0, 0, 0.5);
+
+  /* Electric Ember & Amber Accent System */
+  --brand-orange: #ff6700;
+  --brand-orange-bright: #ff7d00;
+  --brand-orange-light: #ffa338;
+  --brand-orange-dark: #e05500;
+  --brand-orange-glow: rgba(255, 103, 0, 0.32);
+  --brand-orange-subtle: rgba(255, 103, 0, 0.08);
+  --brand-orange-border: rgba(255, 103, 0, 0.38);
+
+  /* Semantic Highlights */
+  --color-emerald: #10b981;
+  --color-emerald-glow: rgba(16, 185, 129, 0.28);
+  --color-ruby: #ef4444;
+  --color-ruby-glow: rgba(239, 68, 68, 0.25);
+  --color-cyan: #06b6d4;
+
+  /* Typography Colors */
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
+  --text-dim: #475569;
+
+  /* Focus Ring */
+  --focus-ring: 0 0 0 3px rgba(255, 103, 0, 0.22), 0 0 24px rgba(255, 103, 0, 0.18);
 }}
 
-* {{ box-sizing: border-box; }}
-html, body, [class*="css"] {{
-  font-family: var(--font-sans);
-  color: var(--text-primary);
+/* --------------------------------------------------------------------------
+   GLOBAL RESET & TYPOGRAPHIC BASE
+   -------------------------------------------------------------------------- */
+* {{
+  box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }}
 
-h1, h2, h3, h4, .brand-name, .hero h1 {{
-  font-family: var(--font-display) !important;
-  letter-spacing: 0.04em;
+html, body, [class*="css"] {{
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }}
 
-code, pre, .trace-step-ms, .timestamp, .citation-num {{
+h1, h2, h3, h4, .brand-name, .hero h1, .auth-title {{
+  font-family: var(--font-display) !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}}
+
+code, pre, .trace-step-ms, .timestamp, .citation-num, .telemetry-pill {{
   font-family: var(--font-mono) !important;
 }}
 
-#MainMenu, footer {{ visibility: hidden; }}
+/* Hide default Streamlit clutter cleanly */
+#MainMenu, footer {{ visibility: hidden !important; }}
 header[data-testid="stHeader"] {{ visibility: visible; background: transparent !important; }}
-header[data-testid="stHeader"] [data-testid="stToolbar"] {{ visibility: hidden; }}
+header[data-testid="stHeader"] [data-testid="stToolbar"] {{ visibility: hidden !important; }}
+header button[data-testid="stBaseButton-header"] {{ visibility: hidden !important; pointer-events: none !important; }}
 
-/* Sidebar Toggle Header Button */
+/* --------------------------------------------------------------------------
+   SIDEBAR TOGGLE BUTTON (TACTILE GLASS CHIP)
+   -------------------------------------------------------------------------- */
 button[data-testid="stSidebarCollapseButton"],
 button[data-testid="stSidebarCollapsedControl"],
 button[data-testid="stBaseButton-headerNoPadding"],
@@ -310,16 +259,16 @@ button[data-testid="stExpandSidebarButton"] {{
   position: fixed !important;
   top: 14px;
   left: 14px;
-  width: 38px !important;
-  height: 38px !important;
-  border: 1px solid rgba(255, 115, 0, 0.45) !important;
-  border-radius: 11px !important;
-  background: rgba(12, 12, 16, 0.88) !important;
-  backdrop-filter: blur(14px) !important;
+  width: 40px !important;
+  height: 40px !important;
+  border: 1px solid var(--brand-orange-border) !important;
+  border-radius: 12px !important;
+  background: rgba(10, 12, 17, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
   color: var(--brand-orange) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 100, 0, 0.16) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 0 16px rgba(255, 103, 0, 0.15) !important;
   z-index: 1000000 !important;
-  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out) !important;
+  transition: transform var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out) !important;
 }}
 
 @media (hover: hover) and (pointer: fine) {{
@@ -327,9 +276,9 @@ button[data-testid="stExpandSidebarButton"] {{
   button[data-testid="stSidebarCollapsedControl"]:hover,
   button[data-testid="stBaseButton-headerNoPadding"]:hover,
   button[data-testid="stExpandSidebarButton"]:hover {{
-    transform: translateY(-1.5px) !important;
-    border-color: var(--brand-orange) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 122, 0, 0.3) !important;
+    transform: translateY(-2px) scale(1.02) !important;
+    border-color: var(--brand-orange-bright) !important;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 0 24px rgba(255, 103, 0, 0.35) !important;
   }}
 }}
 
@@ -348,352 +297,456 @@ button[data-testid="stExpandSidebarButton"] svg {{
   fill: currentColor !important;
 }}
 
-header button[data-testid="stBaseButton-header"] {{
-  visibility: hidden !important;
-  pointer-events: none !important;
+/* --------------------------------------------------------------------------
+   ATMOSPHERIC CANVASES & MESH LIGHTING
+   -------------------------------------------------------------------------- */
+.stApp {{
+  background: #050608 url('{bg_url}') center/cover fixed no-repeat;
+  color: var(--text-primary);
+  min-height: 100vh;
 }}
 
-/* App Background & Ambient Atmospheric Glow */
-.stApp {{
-  background: #060709 url('{bg_url}') center/cover fixed no-repeat;
-  color: var(--text-primary);
-}}
 .stApp::before {{
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 75% 8%, rgba(255, 100, 0, 0.08), transparent 30%),
-              radial-gradient(circle at 18% 88%, rgba(255, 80, 0, 0.06), transparent 34%);
+  background:
+    radial-gradient(ellipse 70% 50% at 80% 5%, rgba(255, 103, 0, 0.08), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 15% 95%, rgba(30, 42, 80, 0.12), transparent 70%),
+    radial-gradient(circle at 50% 50%, rgba(255, 103, 0, 0.02), transparent 80%);
   z-index: 0;
 }}
+
 [data-testid="stAppViewContainer"] > .main {{
   position: relative;
   z-index: 1;
 }}
+
 [data-testid="stMainBlockContainer"] {{
-  max-width: 1120px;
-  padding: 24px 38px 140px;
+  max-width: 1140px;
+  padding: 24px 36px 140px;
 }}
 
-/* Sidebar Architecture & Glass */
+/* --------------------------------------------------------------------------
+   SIDEBAR ARCHITECTURE & GLASS
+   -------------------------------------------------------------------------- */
 section[data-testid="stSidebar"] {{
-  background: rgba(9, 10, 14, 0.82) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
-  backdrop-filter: blur(28px) !important;
+  background: rgba(8, 9, 14, 0.84) !important;
+  border-right: 1px solid var(--bezel-outer-border) !important;
+  backdrop-filter: blur(32px) !important;
   position: relative !important;
-}}
-section[data-testid="stSidebar"] [data-testid="element-container"],
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],
-section[data-testid="stSidebar"] .stHtml,
-section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {{
-  position: static !important;
-}}
-section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{
-  padding-bottom: 84px !important;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.4) !important;
 }}
 
-/* Brand Section */
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{
+  padding-bottom: 96px !important;
+}}
+
+/* Brand Section with Concentric Squircle Halo */
 .brand {{
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 12px 4px 22px;
-}}
-.brand-mark {{
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(249, 115, 22, 0.6);
-  border-radius: 16px;
-  color: var(--brand-orange);
-  font-size: 22px;
-  box-shadow: 0 0 24px rgba(249, 115, 22, 0.25), inset 0 0 12px rgba(249, 115, 22, 0.1);
-  background: rgba(249, 115, 22, 0.08);
-  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
-}}
-.brand:hover .brand-mark {{
-  transform: scale(1.04);
-  box-shadow: 0 0 32px rgba(249, 115, 22, 0.4), inset 0 0 16px rgba(249, 115, 22, 0.15);
-}}
-.brand-name {{
-  color: #f8fafc;
-  font-size: 25px;
-  font-weight: 400;
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-  text-transform: uppercase;
-}}
-.brand-subtitle {{
-  color: var(--brand-orange-light);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.2px;
-  margin-top: 2px;
+  gap: 14px;
+  padding: 14px 4px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 16px;
 }}
 
-/* Sidebar "New Chat" Button */
+.brand-mark-outer {{
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  padding: 2px;
+  background: linear-gradient(135deg, rgba(255, 103, 0, 0.4), rgba(255, 255, 255, 0.05));
+  box-shadow: 0 4px 20px rgba(255, 103, 0, 0.25);
+  display: grid;
+  place-items: center;
+  transition: transform var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-out);
+}}
+
+.brand-mark {{
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  background: #0d0f15;
+  border: 1px solid rgba(255, 103, 0, 0.3);
+  display: grid;
+  place-items: center;
+  color: var(--brand-orange);
+  font-size: 22px;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 0 16px rgba(255, 103, 0, 0.2);
+}}
+
+.brand:hover .brand-mark-outer {{
+  transform: scale(1.05) rotate(2deg);
+  box-shadow: 0 6px 28px rgba(255, 103, 0, 0.45);
+}}
+
+.brand-name {{
+  color: #f8fafc;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}}
+
+.brand-badge-row {{
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+}}
+
+.brand-tag {{
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--brand-orange-light);
+  background: var(--brand-orange-subtle);
+  border: 1px solid rgba(255, 103, 0, 0.25);
+  padding: 1px 6px;
+  border-radius: 5px;
+}}
+
+.brand-status-dot {{
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-emerald);
+  box-shadow: 0 0 8px var(--color-emerald);
+}}
+
+.brand-subtitle {{
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}}
+
+/* --------------------------------------------------------------------------
+   SIDEBAR BUTTONS: BUTTON-IN-BUTTON / ISLAND ARCHITECTURE
+   -------------------------------------------------------------------------- */
 section[data-testid="stSidebar"] .stButton > button {{
   width: 100%;
   height: 48px;
-  border: 0;
-  border-radius: 12px;
-  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  color: #ffffff;
   font-family: var(--font-display) !important;
-  font-weight: 600;
-  font-size: 14.5px;
-  letter-spacing: -0.2px;
-  background: linear-gradient(135deg, #ff5000 0%, #ff7a00 100%);
-  box-shadow: 0 6px 20px rgba(255, 80, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
-}}
-@media (hover: hover) and (pointer: fine) {{
-  section[data-testid="stSidebar"] .stButton > button:hover {{
-    transform: translateY(-1.5px);
-    box-shadow: 0 10px 28px rgba(255, 80, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }}
-}}
-section[data-testid="stSidebar"] .stButton > button:active {{
-  transform: scale(0.975);
-  box-shadow: 0 3px 10px rgba(255, 80, 0, 0.25);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #e65100 0%, #ff6700 60%, #ff8500 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.35),
+    0 4px 18px rgba(255, 103, 0, 0.32),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-out),
+    filter var(--duration-fast) var(--ease-out);
+  cursor: pointer;
 }}
 
-/* Sidebar Chat History Cards */
+@media (hover: hover) and (pointer: fine) {{
+  section[data-testid="stSidebar"] .stButton > button:hover {{
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.5),
+      0 8px 30px rgba(255, 103, 0, 0.5),
+      0 2px 6px rgba(0, 0, 0, 0.5);
+    filter: brightness(1.04);
+  }}
+}}
+
+section[data-testid="stSidebar"] .stButton > button:active {{
+  transform: scale(0.975);
+  box-shadow:
+    inset 0 1px 1px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(255, 103, 0, 0.25);
+}}
+
+/* Sidebar Search Input (Double-Bezel Shell) */
+[data-testid="stSidebar"] [data-testid="stTextInput"] {{
+  margin: 16px 0 0;
+}}
+
+[data-testid="stSidebar"] [data-testid="stTextInput"] input {{
+  background: rgba(13, 15, 22, 0.85) !important;
+  border: 1px solid var(--bezel-outer-border) !important;
+  border-radius: 12px !important;
+  color: #f8fafc !important;
+  height: 44px !important;
+  font-size: 13.5px !important;
+  padding: 0 14px !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out) !important;
+}}
+
+[data-testid="stSidebar"] [data-testid="stTextInput"] input:focus {{
+  border-color: var(--brand-orange) !important;
+  box-shadow: var(--focus-ring), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}}
+
+.side-heading {{
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 22px 0 10px 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}}
+
+.side-heading::after {{
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}}
+
+/* --------------------------------------------------------------------------
+   CHAT HISTORY CARDS: DOPPELRAND (DOUBLE-BEZEL) SYSTEM
+   -------------------------------------------------------------------------- */
 .chat-history-list {{
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 6px 0;
+  gap: 7px;
+  margin: 4px 0;
 }}
+
 .chat-card {{
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.02);
-  padding: 10px 36px 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.018);
+  padding: 2px;
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
-  overflow: hidden;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }}
-@media (hover: hover) and (pointer: fine) {{
-  .chat-card:hover {{
-    transform: translateX(3px);
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  }}
+
+.chat-card:hover {{
+  transform: translateX(4px);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }}
-.chat-card.active {{
-  border-color: rgba(255, 115, 0, 0.45);
-  background: rgba(255, 100, 0, 0.08);
-  border-left: 3px solid #ff6700;
-  padding-left: 11px;
-  box-shadow: inset 0 0 20px rgba(255, 87, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.25);
-}}
-.chat-card.active::after {{
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, transparent, #ff6700, transparent);
-  opacity: 0.6;
-}}
+
 .chat-card-content {{
+  position: relative;
+  background: rgba(12, 14, 20, 0.82);
+  border-radius: 12px;
+  padding: 10px 38px 10px 14px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
   overflow: hidden;
+  transition: background var(--duration-fast) var(--ease-out);
 }}
+
+.chat-card:hover .chat-card-content {{
+  background: rgba(16, 19, 28, 0.94);
+}}
+
+.chat-card.active {{
+  border-color: var(--brand-orange-border);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(255, 103, 0, 0.15);
+}}
+
+.chat-card.active .chat-card-content {{
+  background: linear-gradient(90deg, rgba(255, 103, 0, 0.12) 0%, rgba(12, 14, 20, 0.88) 100%);
+  border-left: 3px solid var(--brand-orange);
+  padding-left: 12px;
+}}
+
 .chat-title {{
-  color: #cbd5e1;
-  font-size: 13px;
+  color: #e2e8f0;
+  font-size: 13.5px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.4;
-  min-width: 0;
+  line-height: 1.35;
 }}
+
 .chat-card.active .chat-title {{
   color: #ffffff;
   font-weight: 600;
 }}
+
 .chat-time {{
   color: var(--text-muted);
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   white-space: nowrap;
-  flex-shrink: 0;
 }}
+
 .chat-delete {{
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   opacity: 0;
-  border-radius: 7px;
-  transition: opacity var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
-  z-index: 10;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-spring),
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+  z-index: 10;
 }}
-.chat-card:hover .chat-delete {{ opacity: 1; }}
+
+.chat-card:hover .chat-delete {{
+  opacity: 1;
+}}
+
 .chat-delete:hover {{
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
-  transform: translateY(-50%) scale(1.08);
+  color: var(--color-ruby);
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: translateY(-50%) scale(1.1);
 }}
 
-/* Sidebar Search Input */
-[data-testid="stTextInput"] {{ margin: 20px 0 0; }}
-[data-testid="stTextInput"] input {{
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.09) !important;
-  border-radius: 11px !important;
-  color: #f8fafc !important;
-  height: 44px !important;
-  font-size: 13px !important;
-  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out) !important;
-}}
-[data-testid="stTextInput"] input:focus {{
-  border-color: var(--brand-orange) !important;
-  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.16) !important;
-}}
-
-.side-heading {{
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin: 22px 0 10px 2px;
-}}
 .empty-history {{
   color: var(--text-muted);
-  padding: 14px 4px;
-  font-size: 12.5px;
+  padding: 16px 8px;
+  font-size: 13px;
+  font-style: italic;
 }}
 
-/* Sidebar Sticky Profile Popover Button */
-.profile {{
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  margin: 14px 0 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(12, 13, 17, 0.92);
-  backdrop-filter: blur(20px);
-  color: #f8fafc;
-  font-size: 14px;
-  z-index: 99;
-  flex-shrink: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}}
-.profile-avatar {{
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1.5px solid var(--brand-orange);
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 600;
-  background: rgba(249, 115, 22, 0.12);
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.2);
-}}
-
-/* Hero Section */
+/* --------------------------------------------------------------------------
+   HERO / WELCOME BANNER (EDITORIAL & POWERFUL)
+   -------------------------------------------------------------------------- */
 .hero {{
   text-align: center;
-  margin: 8px auto 14px;
+  margin: 12px auto 20px;
+  max-width: 860px;
 }}
+
+.hero-eyebrow {{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--brand-orange-border);
+  background: var(--brand-orange-subtle);
+  color: var(--brand-orange-light);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  box-shadow: 0 0 18px rgba(255, 103, 0, 0.12);
+}}
+
+.hero-pulse {{
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand-orange);
+  box-shadow: 0 0 8px var(--brand-orange);
+  animation: hero-beacon 2s infinite var(--ease-in-out);
+}}
+
+@keyframes hero-beacon {{
+  0%, 100% {{ opacity: 1; transform: scale(1); }}
+  50% {{ opacity: 0.4; transform: scale(0.8); }}
+}}
+
 .hero h1 {{
   margin: 0;
-  font-size: 50px;
+  font-size: 58px;
   font-weight: 400;
   letter-spacing: 0.05em;
-  color: #f8fafc !important;
-  line-height: 1.08;
+  color: #ffffff !important;
+  line-height: 1.05;
   text-transform: uppercase;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
 }}
+
 .hero h1 span {{
-  background: linear-gradient(135deg, #ff6a00 0%, #ffa534 100%);
+  background: linear-gradient(135deg, #ff6700 0%, #ff8500 50%, #ffa338 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 20px rgba(255, 103, 0, 0.3));
 }}
+
 .hero p {{
-  margin: 10px 0 22px;
+  margin: 10px auto 24px;
   color: var(--text-secondary);
-  font-size: 15.5px;
-  line-height: 1.5;
-  max-width: 620px;
-  margin-left: auto;
-  margin-right: auto;
+  font-size: 16px;
+  line-height: 1.55;
+  max-width: 640px;
 }}
+
+/* Hero Badge Ribbon (Concentric Squircle Pills) */
 .badges {{
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
 }}
+
 .badge {{
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--bezel-outer-border);
+  border-radius: 999px;
+  background: rgba(14, 16, 24, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.3);
   color: #e2e8f0;
   font-size: 12.5px;
   font-weight: 500;
-  transition: transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }}
+
 @media (hover: hover) and (pointer: fine) {{
   .badge:hover {{
-    transform: translateY(-1px);
-    border-color: rgba(255, 122, 0, 0.35);
-    background: rgba(255, 122, 0, 0.04);
+    transform: translateY(-2px);
+    border-color: var(--brand-orange-border);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(255, 103, 0, 0.2);
+    color: #ffffff;
   }}
 }}
+
 .badge i {{
   color: var(--brand-orange);
   font-style: normal;
+  font-size: 13px;
 }}
 
-/* Chat Conversation */
-.conversation {{
-  max-width: 980px;
-  margin: 14px auto 0;
-}}
-
-/* Entrance Animations (Emil Kowalski Philosophy) */
+/* --------------------------------------------------------------------------
+   CHAT FEED & MESSAGES (DOUBLE-BEZEL & SPRING ENTRANCE)
+   -------------------------------------------------------------------------- */
 @keyframes message-rise {{
   from {{
     opacity: 0;
-    transform: translateY(10px) scale(0.985);
+    transform: translateY(14px) scale(0.985);
   }}
   to {{
     opacity: 1;
@@ -701,424 +754,473 @@ section[data-testid="stSidebar"] .stButton > button:active {{
   }}
 }}
 
+/* User Message */
 .message-user {{
   display: flex;
   justify-content: flex-end;
-  margin: 14px 0;
+  margin: 16px 0;
   animation: message-rise var(--duration-smooth) var(--ease-out) both;
 }}
+
 .user-bubble {{
-  width: fit-content;
-  max-width: 620px;
+  max-width: 660px;
   min-width: 0;
-  padding: 13px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 100, 0, 0.035) 100%);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 2px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
 }}
+
+.user-bubble-inner {{
+  background: linear-gradient(135deg, rgba(20, 24, 34, 0.95) 0%, rgba(14, 16, 24, 0.9) 100%);
+  border-radius: 18px;
+  padding: 14px 18px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
+}}
+
 .user-header {{
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  color: var(--brand-orange);
+  color: var(--brand-orange-light);
   font-size: 13px;
   font-weight: 600;
 }}
+
 .user-avatar {{
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--brand-orange);
+  background: var(--brand-orange-subtle);
+  border: 1px solid var(--brand-orange-border);
   color: var(--brand-orange);
-  font-size: 15px;
-  background: rgba(255, 122, 0, 0.08);
+  font-size: 14px;
 }}
+
 .user-content {{
   color: #f8fafc;
-  margin-top: 6px;
-  line-height: 1.55;
-  font-size: 14.5px;
+  margin-top: 8px;
+  line-height: 1.6;
+  font-size: 15px;
 }}
+
 .timestamp {{
   text-align: right;
   color: var(--text-muted);
   font-size: 11px;
-  margin-top: 6px;
+  margin-top: 8px;
 }}
 
 /* File Attachment Card */
 .file-card {{
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-width: 210px;
+  gap: 12px;
+  min-width: 220px;
   max-width: 100%;
-  padding: 9px 14px;
-  margin: 6px 6px 0 0;
-  border: 1px solid rgba(255, 115, 0, 0.25);
-  border-radius: 13px;
-  background: rgba(255, 100, 0, 0.06);
-  animation: message-rise var(--duration-normal) var(--ease-out) both;
+  padding: 10px 16px;
+  margin: 8px 6px 0 0;
+  border: 1px solid var(--brand-orange-border);
+  border-radius: 14px;
+  background: rgba(255, 103, 0, 0.06);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  animation: message-rise var(--duration-normal) var(--ease-spring) both;
 }}
+
 .file-icon {{
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
-  font-size: 18px;
+  border-radius: 10px;
+  font-size: 19px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }}
-.file-icon.pdf {{ background: rgba(239, 68, 68, 0.16); color: #ef4444; }}
-.file-icon.url {{ background: rgba(59, 130, 246, 0.16); color: #3b82f6; }}
-.file-icon.md {{ background: rgba(34, 197, 94, 0.16); color: #22c55e; }}
-.file-icon.csv {{ background: rgba(168, 85, 247, 0.16); color: #a855f7; }}
-.file-icon.default {{ background: rgba(255, 255, 255, 0.08); color: #a1a1aa; }}
-.file-name {{ font-size: 13px; font-weight: 600; color: #f8fafc; }}
+
+.file-icon.pdf {{ background: rgba(239, 68, 68, 0.16); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }}
+.file-icon.url {{ background: rgba(6, 182, 212, 0.16); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }}
+.file-icon.md {{ background: rgba(16, 185, 129, 0.16); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }}
+.file-icon.csv {{ background: rgba(168, 85, 247, 0.16); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }}
+.file-icon.docx {{ background: rgba(59, 130, 246, 0.16); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }}
+.file-icon.default {{ background: rgba(255, 255, 255, 0.08); color: #a1a1aa; border: 1px solid rgba(255, 255, 255, 0.12); }}
+
+.file-name {{ font-size: 13.5px; font-weight: 600; color: #f8fafc; }}
 .file-meta {{ color: var(--text-muted); font-size: 11px; margin-top: 2px; }}
-.file-check {{ margin-left: auto; color: #22c55e; font-size: 16px; }}
+.file-check {{ margin-left: auto; color: var(--color-emerald); font-size: 16px; }}
 
-/* Reasoning Steps Ribbon */
-.reasoning {{
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 14px 0;
-  padding: 12px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(14px);
-  overflow-x: auto;
-  white-space: nowrap;
-}}
-.reasoning-title {{
-  color: var(--brand-orange);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}}
-.reasoning-step {{
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
-}}
-.reasoning-step.completed {{
-  color: #fbbf24;
-  opacity: 0.9;
-}}
-.reasoning-step.active {{
-  color: var(--brand-orange);
-  font-weight: 600;
-  opacity: 1;
-  animation: pulse-glow 1.6s infinite ease-in-out;
-}}
-.reasoning-step.pending {{
-  color: #475569;
-  opacity: 0.55;
-}}
-@keyframes pulse-glow {{
-  0%, 100% {{ opacity: 0.7; }}
-  50% {{ opacity: 1; text-shadow: 0 0 10px rgba(255, 122, 0, 0.5); }}
-}}
-
-/* Trace Panel */
-.trace-panel {{
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
-  padding: 14px 16px;
-  margin: 8px 0;
-}}
-.trace-title {{
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--brand-orange);
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}}
-.trace-row {{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 12px;
-}}
-.trace-row:last-child {{ border-bottom: none; }}
-.trace-label {{ color: var(--text-muted); }}
-.trace-value {{ color: #f8fafc; font-weight: 500; }}
-.trace-step {{ display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }}
-.trace-dot {{ width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }}
-.trace-dot.done {{ background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }}
-.trace-dot.running {{ background: var(--brand-orange); animation: pulse-glow 1.5s infinite; box-shadow: 0 0 8px rgba(255, 122, 0, 0.5); }}
-.trace-dot.pending {{ background: #334155; }}
-.trace-step-name {{ color: #cbd5e1; flex: 1; }}
-.trace-step-ms {{ color: var(--text-muted); font-size: 11px; }}
-
-/* Assistant Message Card */
+/* --------------------------------------------------------------------------
+   ASSISTANT RESPONSE: DOUBLE-BEZEL CARD & TYPOGRAPHY
+   -------------------------------------------------------------------------- */
 .message-assistant {{
-  max-width: 82%;
+  max-width: 86%;
   display: flex;
-  gap: 14px;
+  gap: 16px;
   align-items: flex-start;
-  margin: 16px 0 20px;
+  margin: 18px 0 24px;
   animation: message-rise var(--duration-smooth) var(--ease-out) both;
 }}
+
 .assistant-avatar {{
   width: 46px;
   min-width: 46px;
   height: 46px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 115, 0, 0.5);
-  border-radius: 50%;
+  border-radius: 16px;
+  border: 1px solid var(--brand-orange-border);
   color: var(--brand-orange);
-  font-size: 21px;
-  background: rgba(255, 100, 0, 0.08);
-  box-shadow: 0 0 18px rgba(255, 100, 0, 0.16);
+  font-size: 22px;
+  background: #0e1017;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 0 20px rgba(255, 103, 0, 0.2);
   flex-shrink: 0;
 }}
+
 .assistant-card {{
   width: 100%;
-  padding: 18px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  background: rgba(16, 17, 22, 0.72);
-  backdrop-filter: blur(24px);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  padding: 22px 26px;
+  border: 1px solid var(--bezel-outer-border);
+  border-radius: 20px;
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(32px);
+  box-shadow: var(--bezel-inner-highlight), var(--bezel-shadow-ambient);
   color: #f1f5f9;
-  line-height: 1.68;
-  font-size: 14.5px;
+  line-height: 1.72;
+  font-size: 15px;
 }}
+
 .assistant-card h1, .assistant-card h2, .assistant-card h3, .assistant-card h4 {{
-  color: var(--brand-orange) !important;
-  font-size: 16.5px !important;
+  color: var(--brand-orange-light) !important;
+  font-size: 17px !important;
   font-weight: 700 !important;
-  margin-top: 18px !important;
-  margin-bottom: 8px !important;
-  letter-spacing: -0.3px !important;
+  margin-top: 22px !important;
+  margin-bottom: 10px !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
 }}
-.assistant-card p {{ color: #e2e8f0 !important; margin: 6px 0 10px !important; }}
-.assistant-card strong {{ color: var(--brand-orange) !important; font-weight: 600 !important; }}
+
+.assistant-card p {{
+  color: #e2e8f0 !important;
+  margin: 8px 0 12px !important;
+}}
+
+.assistant-card strong {{
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}}
+
 .assistant-card pre {{
-  background: #090a0d !important;
+  background: #08090d !important;
   border: 1px solid rgba(255, 255, 255, 0.09) !important;
-  border-radius: 13px !important;
-  padding: 14px 16px !important;
+  border-radius: 14px !important;
+  padding: 16px 18px !important;
   overflow: auto !important;
+  margin: 14px 0 !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}}
+
+.assistant-card code {{
+  color: #fcd34d !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13.5px !important;
+}}
+
+.assistant-card ul, .assistant-card ol {{
+  padding-left: 22px !important;
   margin: 10px 0 !important;
 }}
-.assistant-card code {{ color: #fcd34d !important; font-size: 13px !important; }}
-.assistant-card ul, .assistant-card ol {{ padding-left: 20px !important; margin: 8px 0 !important; }}
-.assistant-card li {{ color: #cbd5e1 !important; margin: 4px 0 !important; }}
 
-/* Citations Section */
+.assistant-card li {{
+  color: #cbd5e1 !important;
+  margin: 5px 0 !important;
+}}
+
+.assistant-card blockquote {{
+  border-left: 3px solid var(--brand-orange) !important;
+  margin: 14px 0 !important;
+  padding: 8px 16px !important;
+  background: var(--brand-orange-subtle) !important;
+  border-radius: 0 10px 10px 0 !important;
+  color: #f8fafc !important;
+}}
+
+/* --------------------------------------------------------------------------
+   REASONING RIBBON & INGESTION STATUS (HIGH-TECH PULSE)
+   -------------------------------------------------------------------------- */
+.reasoning {{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 14px 0;
+  padding: 12px 20px;
+  border: 1px solid var(--bezel-outer-border);
+  border-radius: 16px;
+  background: rgba(12, 14, 20, 0.78);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+  white-space: nowrap;
+}}
+
+.reasoning-title {{
+  color: var(--brand-orange);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}}
+
+.reasoning-step {{
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+}}
+
+.reasoning-step.completed {{
+  color: var(--color-emerald);
+  font-weight: 500;
+}}
+
+.reasoning-step.active {{
+  color: var(--brand-orange-bright);
+  font-weight: 600;
+  animation: reasoning-pulse 1.8s infinite var(--ease-in-out);
+}}
+
+@keyframes reasoning-pulse {{
+  0%, 100% {{ opacity: 0.8; }}
+  50% {{ opacity: 1; text-shadow: 0 0 12px var(--brand-orange-glow); }}
+}}
+
+.reasoning-step.pending {{
+  color: var(--text-dim);
+}}
+
+/* --------------------------------------------------------------------------
+   CITATIONS & SOURCES (ISLAND CHIPS)
+   -------------------------------------------------------------------------- */
 .citations {{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 16px;
-  padding-top: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }}
+
 .citations-label {{
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-right: 4px;
 }}
+
 .citation-chip {{
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   padding: 5px 12px 5px 6px;
-  border: 1px solid rgba(255, 115, 0, 0.28);
+  border: 1px solid var(--brand-orange-border);
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 115, 0, 0.08), rgba(255, 0, 123, 0.04));
+  background: var(--brand-orange-subtle);
   font-size: 12px;
   color: #e2e8f0;
-  transition: transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
   cursor: default;
 }}
+
 @media (hover: hover) and (pointer: fine) {{
   .citation-chip:hover {{
-    transform: translateY(-1px);
-    border-color: rgba(255, 115, 0, 0.6);
-    background: linear-gradient(135deg, rgba(255, 115, 0, 0.16), rgba(255, 0, 123, 0.08));
-    box-shadow: 0 4px 14px rgba(255, 115, 0, 0.2);
+    transform: translateY(-1.5px);
+    border-color: var(--brand-orange-bright);
+    background: rgba(255, 103, 0, 0.14);
+    box-shadow: 0 6px 18px rgba(255, 103, 0, 0.22);
   }}
 }}
+
 .citation-num {{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #ff5a00, #ff8a00);
+  background: linear-gradient(135deg, var(--brand-orange), var(--brand-orange-bright));
   color: #fff;
   font-size: 10px;
   font-weight: 700;
 }}
-.citation-icon {{ font-size: 12px; }}
-.citation-name {{ color: #e2e8f0; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-.citation-page {{ color: #ff9a3c; font-size: 11px; font-weight: 600; padding-left: 6px; border-left: 1px solid rgba(255, 115, 0, 0.3); }}
 
-/* Chat Input Bar with Polished Glow */
+.citation-name {{
+  color: #e2e8f0;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}}
+
+.citation-page {{
+  color: var(--brand-orange-light);
+  font-size: 11px;
+  font-weight: 600;
+  padding-left: 6px;
+  border-left: 1px solid rgba(255, 103, 0, 0.35);
+}}
+
+/* Metadata & Telemetry Row */
+.metadata {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}}
+
+.metadata span {{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}}
+
+.metadata span b {{
+  color: #ffffff;
+}}
+
+.ragas-badge {{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 11.5px;
+}}
+
+/* --------------------------------------------------------------------------
+   CHAT INPUT DOCK: AMBIENT GLOW & TACTILE SUBMIT
+   -------------------------------------------------------------------------- */
 [data-testid="stBottom"], [data-testid="stBottom"] > div,
 [data-testid="stBottomBlockContainer"], [data-testid="stBottomBlockContainer"] > div {{
   background: transparent !important;
   box-shadow: none !important;
 }}
+
 [data-testid="stBottomBlockContainer"] {{
-  padding: 16px 24px 28px !important;
+  padding: 16px 24px 30px !important;
 }}
 
 [data-testid="stChatInput"] {{
   position: relative !important;
   max-width: 980px;
   margin: 0 auto !important;
-  border: 1px solid rgba(255, 115, 0, 0.25) !important;
-  border-radius: 18px !important;
-  background: rgba(14, 15, 20, 0.88) !important;
-  backdrop-filter: blur(24px) !important;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(255, 100, 0, 0.08) !important;
-  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out) !important;
-}}
-[data-testid="stChatInput"]:focus-within {{
-  border-color: var(--brand-orange) !important;
-  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), 0 0 28px rgba(255, 122, 0, 0.24) !important;
+  border: 1px solid var(--brand-orange-border) !important;
+  border-radius: 20px !important;
+  background: rgba(12, 14, 20, 0.9) !important;
+  backdrop-filter: blur(28px) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 10px 36px rgba(0, 0, 0, 0.55),
+    0 0 20px rgba(255, 103, 0, 0.1) !important;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out) !important;
 }}
 
-[data-testid="stChatInput"] > div, [data-testid="stChatInput"] [data-baseweb="textarea"],
-[data-testid="stChatInput"] textarea, [data-testid="stChatInput"] [data-baseweb="input"] {{
+[data-testid="stChatInput"]:focus-within {{
+  border-color: var(--brand-orange) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 12px 42px rgba(0, 0, 0, 0.65),
+    0 0 32px rgba(255, 103, 0, 0.28) !important;
+}}
+
+[data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+[data-testid="stChatInput"] textarea,
+[data-testid="stChatInput"] [data-baseweb="input"] {{
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
 }}
+
 [data-testid="stChatInput"] textarea {{
   color: #f8fafc !important;
-  font-size: 14.5px !important;
+  font-size: 15px !important;
   line-height: 1.5 !important;
 }}
+
 [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] {{
-  background: linear-gradient(135deg, #ff5000, #ff8000) !important;
+  background: linear-gradient(135deg, var(--brand-orange), var(--brand-orange-bright)) !important;
   border-radius: 50% !important;
   color: white !important;
-  box-shadow: 0 2px 10px rgba(255, 80, 0, 0.35) !important;
-  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out) !important;
+  box-shadow: 0 4px 14px rgba(255, 103, 0, 0.4) !important;
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-out) !important;
 }}
+
 @media (hover: hover) and (pointer: fine) {{
   [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"]:hover {{
-    transform: scale(1.06) !important;
-    box-shadow: 0 4px 16px rgba(255, 80, 0, 0.5) !important;
+    transform: scale(1.08) !important;
+    box-shadow: 0 6px 20px rgba(255, 103, 0, 0.55) !important;
   }}
 }}
+
 [data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"]:active {{
-  transform: scale(0.94) !important;
+  transform: scale(0.92) !important;
 }}
 
-/* Streamlit Tabs Styling */
-[data-testid="stTabs"] [data-baseweb="tab-list"] {{
-  background: transparent !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  gap: 8px !important;
-}}
-[data-testid="stTabs"] [data-baseweb="tab"] {{
-  font-family: var(--font-display) !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  color: #94a3b8 !important;
-  padding: 10px 18px !important;
-  border-radius: 10px 10px 0 0 !important;
-  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out) !important;
-}}
-[data-testid="stTabs"] [data-baseweb="tab"]:hover {{
-  color: #f8fafc !important;
-}}
-[data-testid="stTabs"] [aria-selected="true"] {{
-  color: var(--brand-orange) !important;
-}}
-[data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
-  background-color: var(--brand-orange) !important;
-  height: 2.5px !important;
-}}
-
-/* Dialog Overlay */
-[role="dialog"] {{
-  background: rgba(15, 16, 22, 0.98) !important;
-  border: 1px solid rgba(255, 115, 0, 0.2) !important;
-  border-radius: 18px !important;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 100, 0, 0.1) !important;
-  color: #f8fafc !important;
-  max-width: 420px !important;
-}}
-[role="dialog"] header {{ border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; }}
-[role="dialog"] header span {{ color: #f8fafc !important; font-weight: 600 !important; }}
-[role="dialog"] button[aria-label="Close"] {{ color: #a1a1aa !important; }}
-[role="dialog"] button[aria-label="Close"]:hover {{ color: #f8fafc !important; }}
-[role="dialog"] .stButton > button {{
-  border-radius: 11px !important;
-  height: 42px !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  background-image: none !important;
-}}
-[role="dialog"] .stButton > button[kind="primary"] {{
-  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-  border: none !important;
-  color: #fff !important;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
-}}
-@media (hover: hover) and (pointer: fine) {{
-  [role="dialog"] .stButton > button[kind="primary"]:hover {{
-    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5) !important;
-    transform: translateY(-1px) !important;
-  }}
-}}
-
-/* Auth Screen & Google SSO Styling */
+/* --------------------------------------------------------------------------
+   AUTH SCREEN & GOOGLE SSO (LUXURY DOUBLE-BEZEL CARD)
+   -------------------------------------------------------------------------- */
 #auth-welcome-container {{
   animation: message-rise var(--duration-smooth) var(--ease-out) both;
 }}
+
 .auth-welcome-spark {{
-  width: 56px;
-  height: 56px;
+  width: 58px;
+  height: 58px;
   margin: 0 auto 16px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(249, 115, 22, 0.6);
   border-radius: 18px;
+  border: 1px solid var(--brand-orange-border);
   color: var(--brand-orange);
-  font-size: 26px;
-  box-shadow: 0 0 28px rgba(249, 115, 22, 0.3), inset 0 0 14px rgba(249, 115, 22, 0.12);
-  background: rgba(249, 115, 22, 0.08);
-  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+  font-size: 28px;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 0 32px rgba(255, 103, 0, 0.35);
+  background: rgba(14, 16, 24, 0.9);
+  transition: transform var(--duration-fast) var(--ease-spring);
 }}
-@media (hover: hover) and (pointer: fine) {{
-  .auth-welcome-spark:hover {{
-    transform: scale(1.06);
-    box-shadow: 0 0 34px rgba(249, 115, 22, 0.42), inset 0 0 18px rgba(249, 115, 22, 0.16);
-  }}
+
+.auth-welcome-spark:hover {{
+  transform: scale(1.08) rotate(4deg);
 }}
+
 .auth-google-btn {{
   text-decoration: none !important;
   display: flex;
@@ -1126,47 +1228,97 @@ section[data-testid="stSidebar"] .stButton > button:active {{
   justify-content: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 18px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 13px 20px;
+  background: rgba(16, 19, 28, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
-  color: #f4f4f5 !important;
-  font-family: var(--font-display) !important;
+  border-radius: 14px;
+  color: #f8fafc !important;
+  font-family: var(--font-sans) !important;
   font-size: 14.5px;
   font-weight: 600;
-  transition: transform var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
-  margin-bottom: 12px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 6px 20px rgba(0, 0, 0, 0.4);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+  margin-bottom: 14px;
   cursor: pointer;
 }}
+
 @media (hover: hover) and (pointer: fine) {{
   .auth-google-btn:hover {{
-    transform: translateY(-1.5px);
-    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+    background: rgba(22, 26, 38, 0.98);
     border-color: rgba(255, 255, 255, 0.28);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 10px 28px rgba(0, 0, 0, 0.55);
   }}
 }}
+
 .auth-google-btn:active {{
-  transform: scale(0.98);
+  transform: scale(0.975);
 }}
 
+/* Tabs */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {{
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  gap: 8px !important;
+}}
+
+[data-testid="stTabs"] [data-baseweb="tab"] {{
+  font-family: var(--font-display) !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  color: var(--text-muted) !important;
+  padding: 10px 20px !important;
+  border-radius: 12px 12px 0 0 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  transition: color var(--duration-fast) var(--ease-out) !important;
+}}
+
+[data-testid="stTabs"] [data-baseweb="tab"]:hover {{
+  color: #ffffff !important;
+}}
+
+[data-testid="stTabs"] [aria-selected="true"] {{
+  color: var(--brand-orange) !important;
+}}
+
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
+  background-color: var(--brand-orange) !important;
+  height: 2.5px !important;
+  box-shadow: 0 0 10px var(--brand-orange-glow) !important;
+}}
+
+/* Form Buttons */
 .stFormSubmitButton > button {{
   font-family: var(--font-display) !important;
-  font-weight: 600 !important;
-  border-radius: 12px !important;
-  height: 46px !important;
-  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out) !important;
-}}
-@media (hover: hover) and (pointer: fine) {{
-  .stFormSubmitButton > button:hover {{
-    transform: translateY(-1px) !important;
-  }}
-}}
-.stFormSubmitButton > button:active {{
-  transform: scale(0.98) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  border-radius: 14px !important;
+  height: 48px !important;
+  font-size: 16px !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 20px rgba(255, 103, 0, 0.35) !important;
+  transition: transform var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-out) !important;
 }}
 
-/* Reduced Motion Override */
+@media (hover: hover) and (pointer: fine) {{
+  .stFormSubmitButton > button:hover {{
+    transform: translateY(-2px) !important;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 10px 28px rgba(255, 103, 0, 0.5) !important;
+  }}
+}}
+
+.stFormSubmitButton > button:active {{
+  transform: scale(0.975) !important;
+}}
+
+/* --------------------------------------------------------------------------
+   ACCESSIBILITY & REDUCED MOTION
+   -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {{
   *, ::before, ::after {{
     animation-duration: 0.01ms !important;
@@ -1176,14 +1328,15 @@ section[data-testid="stSidebar"] .stButton > button:active {{
   }}
 }}
 
+/* Responsive Overrides */
 @media (max-width: 850px) {{
-  .hero h1 {{ font-size: 30px; }}
+  .hero h1 {{ font-size: 36px; }}
   .assistant-avatar {{ width: 40px; min-width: 40px; height: 40px; }}
   .profile {{ position: static; margin-top: 24px; }}
   [data-testid="stMainBlockContainer"] {{ padding: 16px 18px 120px; }}
 }}
 </style>
-""""",
+""",
     unsafe_allow_html=True,
 )
 
@@ -1264,7 +1417,7 @@ def show_delete_dialog():
 
 with st.sidebar:
     st.markdown(
-        '<div class="brand"><div class="brand-mark">✧</div><div><div class="brand-name">Agentic RAG</div><div class="brand-subtitle">Chatbot</div></div></div>',
+        '<div class="brand"><div class="brand-mark-outer"><div class="brand-mark">✦</div></div><div><div class="brand-name">Agentic RAG</div><div class="brand-badge-row"><span class="brand-tag">v2.5 PRO</span><span class="brand-status-dot"></span><span class="brand-subtitle">Neural Engine</span></div></div></div>',
         unsafe_allow_html=True,
     )
     if not st.session_state.get("user"):
@@ -1477,11 +1630,12 @@ if not st.session_state.get("user"):
 
     st.markdown(
         f"""
-        <div id="auth-welcome-container" style="max-width: 480px; margin: 30px auto 14px; text-align: center;">
+        <div id="auth-welcome-container" style="max-width: 480px; margin: 30px auto 16px; text-align: center;">
           <div class="auth-welcome-spark">✦</div>
-          <h1 style="font-family: var(--font-display); font-size: 38px; font-weight: 400; color: #f5f5f5; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase;">Welcome to <span style="color:#ff7a00;">Agentic RAG</span></h1>
-          <p style="color: #a1a1aa; font-size: 14px; margin-bottom: 10px;">Your enterprise research assistant with deep retrieval & reasoning.</p>
-          <span style="font-size: 11px; padding: 4px 12px; border-radius: 12px; background: rgba(255,115,0,0.1); border: 1px solid rgba(255,115,0,0.3); color: #ff8800; font-weight: 500;">{auth_badge}</span>
+          <div class="hero-eyebrow" style="margin-bottom: 8px;"><span class="hero-pulse"></span> ENTERPRISE INTELLIGENCE</div>
+          <h1 style="font-family: var(--font-display); font-size: 42px; font-weight: 400; color: #ffffff; margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase;">Welcome to <span style="color:#ff7d00;">Agentic RAG</span></h1>
+          <p style="color: #94a3b8; font-size: 14.5px; margin-bottom: 12px; line-height: 1.5;">Your enterprise research assistant with deep retrieval & reasoning.</p>
+          <span style="font-size: 11.5px; padding: 4px 14px; border-radius: 999px; background: rgba(255,103,0,0.1); border: 1px solid rgba(255,103,0,0.3); color: #ffa338; font-weight: 600; font-family: var(--font-mono);">{auth_badge}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1603,10 +1757,18 @@ st.markdown(
     body.oauth-authenticating #oauth-instant-overlay {{ display: none !important; }}
     </style>
     <div class="hero">
-      <h1>Agentic <span>RAG</span> Chatbot</h1>
-      <p>Your AI research assistant, powered by retrieval and reasoning.</p>
-      <div class="badges"><span class="badge"><i>♢</i>Guardrails Enabled</span><span class="badge"><i>♙</i>Agent Mode</span><span class="badge"><i>▧</i>{document_label}</span>{chunk_badge}</div>
-      <div style="margin-top: 14px; color: #a1a1aa; font-size: 12px;">Runtime: {RUNTIME_CONFIG['app_env']} | Active model: {RUNTIME_CONFIG['groq_model']}</div>
+      <div class="hero-eyebrow"><span class="hero-pulse"></span> ENTERPRISE REASONING &bull; HYBRID RETRIEVAL</div>
+      <h1>AGENTIC <span>RAG</span> ASSISTANT</h1>
+      <p>Advanced multi-hop reasoning over enterprise knowledge bases with verified citations and real-time safety guardrails.</p>
+      <div class="badges">
+        <span class="badge"><i>🛡️</i>Guardrails Active</span>
+        <span class="badge"><i>⚡</i>Agentic Pipeline</span>
+        <span class="badge"><i>📂</i>{document_label}</span>
+        {chunk_badge}
+      </div>
+      <div style="margin-top: 16px; color: #64748b; font-size: 12px; font-family: var(--font-mono);">
+        RUNTIME: <b style="color:#94a3b8;">{RUNTIME_CONFIG['app_env'].upper()}</b> &nbsp;|&nbsp; MODEL: <b style="color:#ffa338;">{RUNTIME_CONFIG['groq_model']}</b>
+      </div>
     </div>
     """,
     unsafe_allow_html=True,
