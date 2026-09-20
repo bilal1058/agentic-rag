@@ -82,107 +82,18 @@ def get_runtime_config() -> dict[str, Any]:
     }
 
 
-def validate_runtime_environment() -> list[str]:
-    """Return a list of missing production safety warnings."""
-    config = get_runtime_config()
-    warnings: list[str] = []
-
-    if config["app_env"] == "production":
-        if not os.environ.get("GROQ_API_KEY"):
-            warnings.append("Production requires GROQ_API_KEY to be set.")
-        if not os.environ.get("OPENROUTER_API_KEY"):
-            warnings.append("Production should configure OPENROUTER_API_KEY as a fallback provider.")
-        if not os.environ.get("APP_SECRET_KEY"):
-            warnings.append("Production requires APP_SECRET_KEY to sign session state.")
-
-    if config["max_requests_per_minute"] <= 0:
-        warnings.append("MAX_REQUESTS_PER_MINUTE must be greater than zero.")
-
-    if not config["enable_guardrails"]:
-        warnings.append("Guardrails are disabled; this is unsafe for untrusted user input.")
-
-    return warnings
-
-
-def startup_health_check() -> list[str]:
-    """Run runtime checks at app startup and log/return warnings."""
-    config = get_runtime_config()
-    warnings = validate_runtime_environment()
-
-    if config["app_env"] == "production":
-        logger.warning("Production runtime config loaded: %s", config)
-
-    if warnings:
-        logger.warning("Runtime warnings: %s", warnings)
-    else:
-        logger.info("Runtime config passed startup checks.")
-
-    return warnings
-
-
 # ---------------------------------------------------------------------------
-# Rate Limiter
+# Request Governance & Rate Limiting (Delegated to core.governance)
 # ---------------------------------------------------------------------------
-_history: dict[str, list[float]] = defaultdict(list)
-WINDOW_SECONDS = 60
+from core.governance import (
+    validate_runtime_environment,
+    startup_health_check,
+    check_rate_limit,
+    rate_limit_remaining,
+    reset_rate_limit,
+    RedisRateLimiter,
+)
 
-
-def _get_max_requests() -> int:
-    config = get_runtime_config()
-    return max(int(config.get("max_requests_per_minute", 8)), 1)
-
-
-def _prune_rate_limit(session_id: str, now: float) -> None:
-    cutoff = now - WINDOW_SECONDS
-    _history[session_id] = [t for t in _history[session_id] if t > cutoff]
-
-
-def check_rate_limit(session_id: str) -> tuple[bool, float]:
-    """Check request limit for session. Returns (allowed, retry_after_seconds)."""
-    now = time.monotonic()
-    _prune_rate_limit(session_id, now)
-    timestamps = _history[session_id]
-    max_requests = _get_max_requests()
-
-    if len(timestamps) >= max_requests:
-        retry_after = WINDOW_SECONDS - (now - timestamps[0])
-        return False, max(retry_after, 1.0)
-
-    timestamps.append(now)
-    return True, 0.0
-
-
-def rate_limit_remaining(session_id: str) -> int:
-    """Return remaining allowed prompts in the current window."""
-    _prune_rate_limit(session_id, time.monotonic())
-    max_requests = _get_max_requests()
-    return max(0, max_requests - len(_history[session_id]))
-
-
-def reset_rate_limit(session_id: str) -> None:
-    """Clear rate limit history for a session."""
-    _history.pop(session_id, None)
-
-
-class RedisRateLimiter:
-    """In-memory placeholder for Redis-backed rate limiting."""
-
-    def __init__(self, window_seconds: int = 60, max_requests: int = 8):
-        self.window_seconds = window_seconds
-        self.max_requests = max_requests
-        self._history: dict[str, list[float]] = defaultdict(list)
-
-    def check(self, user_key: str) -> tuple[bool, float]:
-        now = time.monotonic()
-        window_start = now - self.window_seconds
-        self._history[user_key] = [ts for ts in self._history.get(user_key, []) if ts > window_start]
-
-        if len(self._history[user_key]) >= self.max_requests:
-            retry_after = self.window_seconds - (now - self._history[user_key][0])
-            return False, max(retry_after, 1.0)
-
-        self._history[user_key].append(now)
-        return True, 0.0
 
 
 # ---------------------------------------------------------------------------

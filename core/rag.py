@@ -427,129 +427,141 @@ def _get_bm25(persist_directory: str) -> BM25Index | None:
 
 
 # ---------------------------------------------------------------------------
-# Hybrid Search & Reranking
+# ---------------------------------------------------------------------------
+# Deep HybridRetriever Module: Dense + BM25 + RRF + Cross-Encoder Reranking
 # ---------------------------------------------------------------------------
 
-async def ahybrid_search(
-    query: str,
-    vector_store,
-    persist_directory: str,
-    k: int = 10,
-    filter_sources: list[str] | None = None,
-) -> list[Document]:
-    """Combine BM25 keyword matching with dense vector similarity via Reciprocal Rank Fusion."""
-    norm_filters = {s.strip().lower() for s in filter_sources if s and s.strip()} if filter_sources else None
+class HybridRetriever:
+    """Deep retrieval module unifying dense Qdrant search, BM25 lexical search,
+    Reciprocal Rank Fusion (RRF), and cross-encoder re-ranking behind a single interface.
+    """
 
-    def _matches_filter(source_name: str) -> bool:
-        if not norm_filters:
-            return True
-        s_lower = source_name.strip().lower()
-        return any(
-            f == s_lower
-            or s_lower.endswith("/" + f)
-            or s_lower.endswith("\\" + f)
-            or Path(s_lower).name == Path(f).name
-            for f in norm_filters
-        )
+    def __init__(self, vector_store, session_dir: str = "", cross_encoder=None):
+        self.vector_store = vector_store
+        self.session_dir = session_dir
+        self._cross_encoder = cross_encoder
 
-    async def _search_semantic():
-        try:
-            fetch_k = k * 4 if norm_filters else k * 2
-            retriever = vector_store.as_retriever(search_kwargs={"k": fetch_k})
-            docs = await retriever.ainvoke(query)
-            if norm_filters:
-                docs = [d for d in docs if _matches_filter(d.metadata.get("source_name", ""))]
-            return docs[: k * 2]
-        except Exception as exc:
-            logger.warning("Semantic search failed: %s", exc)
-            return []
+    @property
+    def cross_encoder(self):
+        if self._cross_encoder is not None:
+            return self._cross_encoder if self._cross_encoder is not False else None
+        return _get_cross_encoder()
 
-    async def _search_bm25():
-        try:
-            bm25 = _get_bm25(persist_directory)
-            if bm25 is not None:
-                hits = bm25.search(query, k=k * 4 if norm_filters else k * 2)
-                if norm_filters and hits:
-                    filtered = []
-                    for idx, score in hits:
-                        if idx < len(bm25.metadatas):
-                            if _matches_filter(bm25.metadatas[idx].get("source_name", "")):
-                                filtered.append((idx, score))
-                    hits = filtered[: k * 2]
-                return bm25, hits
-        except Exception as exc:
-            logger.warning("BM25 search failed: %s", exc)
-        return None, []
+    async def ahybrid_search(
+        self,
+        query: str,
+        k: int = 10,
+        filter_sources: list[str] | None = None,
+    ) -> list[Document]:
+        norm_filters = {s.strip().lower() for s in filter_sources if s and s.strip()} if filter_sources else None
 
-    semantic_docs, (bm25, bm25_hits) = await asyncio.gather(_search_semantic(), _search_bm25())
+        def _matches_filter(source_name: str) -> bool:
+            if not norm_filters:
+                return True
+            s_lower = source_name.strip().lower()
+            return any(
+                f == s_lower
+                or s_lower.endswith("/" + f)
+                or s_lower.endswith("\\" + f)
+                or Path(s_lower).name == Path(f).name
+                for f in norm_filters
+            )
 
-    bm25_results = {}
-    semantic_results = {}
+        async def _search_semantic():
+            try:
+                fetch_k = k * 4 if norm_filters else k * 2
+                retriever = self.vector_store.as_retriever(search_kwargs={"k": fetch_k})
+                docs = await retriever.ainvoke(query)
+                if norm_filters:
+                    docs = [d for d in docs if _matches_filter(d.metadata.get("source_name", ""))]
+                return docs[: k * 2]
+            except Exception as exc:
+                logger.warning("Semantic search failed: %s", exc)
+                return []
 
-    if bm25_hits:
-        for rank, (idx, _) in enumerate(bm25_hits):
-            bm25_results[idx] = rank
+        async def _search_bm25():
+            try:
+                bm25 = _get_bm25(self.session_dir)
+                if bm25 is not None:
+                    hits = bm25.search(query, k=k * 4 if norm_filters else k * 2)
+                    if norm_filters and hits:
+                        filtered = []
+                        for idx, score in hits:
+                            if idx < len(bm25.metadatas):
+                                if _matches_filter(bm25.metadatas[idx].get("source_name", "")):
+                                    filtered.append((idx, score))
+                        hits = filtered[: k * 2]
+                    return bm25, hits
+            except Exception as exc:
+                logger.warning("BM25 search failed: %s", exc)
+            return None, []
 
-    for rank, doc in enumerate(semantic_docs):
-        key = doc.page_content[:200]
-        semantic_results[key] = (rank, doc)
+        semantic_docs, (bm25, bm25_hits) = await asyncio.gather(_search_semantic(), _search_bm25())
 
-    rrf_scores: dict[str, float] = {}
-    doc_map: dict[str, Document] = {}
-    k_rrf = 60
+        bm25_results = {}
+        semantic_results = {}
 
-    if bm25 is not None and bm25_results:
-        for idx, rank in bm25_results.items():
-            text = bm25.texts[idx]
-            key = text[:200]
+        if bm25_hits:
+            for rank, (idx, _) in enumerate(bm25_hits):
+                bm25_results[idx] = rank
+
+        for rank, doc in enumerate(semantic_docs):
+            key = doc.page_content[:200]
+            semantic_results[key] = (rank, doc)
+
+        rrf_scores: dict[str, float] = {}
+        doc_map: dict[str, Document] = {}
+        k_rrf = 60
+
+        if bm25 is not None and bm25_results:
+            for idx, rank in bm25_results.items():
+                text = bm25.texts[idx]
+                key = text[:200]
+                rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (k_rrf + rank + 1)
+                doc_map[key] = Document(page_content=text, metadata=bm25.metadatas[idx])
+
+        for key, (rank, doc) in semantic_results.items():
             rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (k_rrf + rank + 1)
-            doc_map[key] = Document(page_content=text, metadata=bm25.metadatas[idx])
+            if key not in doc_map:
+                doc_map[key] = doc
 
-    for key, (rank, doc) in semantic_results.items():
-        rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (k_rrf + rank + 1)
-        if key not in doc_map:
-            doc_map[key] = doc
+        sorted_keys = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+        return [doc_map[key] for key in sorted_keys[:k]]
 
-    sorted_keys = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
-    return [doc_map[key] for key in sorted_keys[:k]]
-
-
-def create_hybrid_retriever_tool(
-    vector_store,
-    session_dir: str = "",
-    filter_sources: list[str] | None = None,
-    is_comparative: bool = False,
-):
-    _cross_encoder = _get_cross_encoder()
-
-    @tool
-    async def search_documents(query: str) -> str:
-        """Search uploaded documents for specific information with multi-source balance."""
+    async def aretrieve(
+        self,
+        query: str,
+        top_k: int = 6,
+        filter_sources: list[str] | None = None,
+        is_comparative: bool = False,
+    ) -> list[Document]:
         sources_list = [s for s in (filter_sources or []) if s and s.strip()]
 
-        if is_comparative and not sources_list and session_dir:
-            bm25 = _get_bm25(session_dir)
+        if is_comparative and not sources_list and self.session_dir:
+            bm25 = _get_bm25(self.session_dir)
             if bm25 and bm25.metadatas:
                 discovered = list({m.get("source_name") for m in bm25.metadatas if m.get("source_name")})
                 if len(discovered) >= 2:
                     sources_list = discovered
 
+        ce = self.cross_encoder
+
         if len(sources_list) >= 2:
             tasks = [
-                ahybrid_search(query, vector_store, session_dir, k=6, filter_sources=[src])
+                self.ahybrid_search(query, k=top_k, filter_sources=[src])
                 for src in sources_list
             ]
             results_per_source = await asyncio.gather(*tasks)
 
             final_docs = []
-            allocation = max(2, 6 // len(sources_list))
+            allocation = max(2, top_k // len(sources_list))
 
             for src, src_docs in zip(sources_list, results_per_source):
                 if not src_docs:
                     continue
-                if _cross_encoder is not None and len(src_docs) > 1:
+                if ce and len(src_docs) > 1:
                     pairs = [(query, doc.page_content) for doc in src_docs]
-                    scores = await asyncio.to_thread(_cross_encoder.predict, pairs)
+                    scores = await asyncio.to_thread(ce.predict, pairs)
                     scored_docs = sorted(zip(scores, src_docs), key=lambda x: x[0], reverse=True)
                     final_docs.extend([doc for _, doc in scored_docs[:allocation]])
                 else:
@@ -557,21 +569,45 @@ def create_hybrid_retriever_tool(
 
             docs = final_docs
             if not docs:
-                docs = await ahybrid_search(query, vector_store, session_dir, k=10, filter_sources=None)
+                docs = await self.ahybrid_search(query, k=10, filter_sources=None)
         else:
-            docs = await ahybrid_search(query, vector_store, session_dir, k=10, filter_sources=filter_sources)
+            docs = await self.ahybrid_search(query, k=10, filter_sources=filter_sources)
             if not docs and filter_sources:
                 logger.info("Targeted retrieval returned 0 docs; falling back to unfiltered search")
-                docs = await ahybrid_search(query, vector_store, session_dir, k=10, filter_sources=None)
+                docs = await self.ahybrid_search(query, k=10, filter_sources=None)
 
-            if docs and _cross_encoder is not None and len(docs) > 1:
+            if docs and ce and len(docs) > 1:
                 pairs = [(query, doc.page_content) for doc in docs]
-                scores = await asyncio.to_thread(_cross_encoder.predict, pairs)
+                scores = await asyncio.to_thread(ce.predict, pairs)
                 scored_docs = sorted(zip(scores, docs), key=lambda x: x[0], reverse=True)
-                docs = [doc for _, doc in scored_docs[:6]]
+                docs = [doc for _, doc in scored_docs[:top_k]]
             elif docs:
-                docs = docs[:6]
+                docs = docs[:top_k]
 
+        return docs
+
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 6,
+        filter_sources: list[str] | None = None,
+        is_comparative: bool = False,
+    ) -> list[Document]:
+        """Synchronous convenience call for retrieve."""
+        return asyncio.run(
+            self.aretrieve(query, top_k=top_k, filter_sources=filter_sources, is_comparative=is_comparative)
+        )
+
+    async def search_and_format(
+        self,
+        query: str,
+        top_k: int = 6,
+        filter_sources: list[str] | None = None,
+        is_comparative: bool = False,
+    ) -> str:
+        docs = await self.aretrieve(
+            query, top_k=top_k, filter_sources=filter_sources, is_comparative=is_comparative
+        )
         if not docs:
             return "No relevant documents found. The document content could not be retrieved."
 
@@ -585,6 +621,40 @@ def create_hybrid_retriever_tool(
             parts.append(f"[Document {i}: {source}{page_str}]\n{doc.page_content}")
 
         return "\n\n".join(parts)
+
+
+async def ahybrid_search(
+    query: str,
+    vector_store,
+    persist_directory: str,
+    k: int = 10,
+    filter_sources: list[str] | None = None,
+) -> list[Document]:
+    """Combine BM25 keyword matching with dense vector similarity via Reciprocal Rank Fusion."""
+    retriever = HybridRetriever(vector_store, session_dir=persist_directory)
+    return await retriever.ahybrid_search(query, k=k, filter_sources=filter_sources)
+
+
+def get_hybrid_retriever(vector_store, session_dir: str = "", cross_encoder=None) -> HybridRetriever:
+    """Return a deep HybridRetriever instance."""
+    return HybridRetriever(vector_store, session_dir=session_dir, cross_encoder=cross_encoder)
+
+
+def create_hybrid_retriever_tool(
+    vector_store,
+    session_dir: str = "",
+    filter_sources: list[str] | None = None,
+    is_comparative: bool = False,
+):
+    """Create a LangChain tool wrapping the deep HybridRetriever."""
+    retriever = get_hybrid_retriever(vector_store, session_dir=session_dir)
+
+    @tool
+    async def search_documents(query: str) -> str:
+        """Search uploaded documents for specific information with multi-source balance."""
+        return await retriever.search_and_format(
+            query, filter_sources=filter_sources, is_comparative=is_comparative
+        )
 
     return search_documents
 

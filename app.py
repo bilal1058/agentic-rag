@@ -10,7 +10,8 @@ from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
 
-from core.config import get_runtime_config, startup_health_check, check_rate_limit, reset_rate_limit
+from core.config import get_runtime_config
+from core.governance import startup_health_check, check_rate_limit, reset_rate_limit
 from core.auth import (
     login_user,
     signup_user,
@@ -22,6 +23,14 @@ from core.auth import (
     validate_token,
 )
 from core.oauth_component import oauth_bridge
+from core.session import (
+    session_path,
+    load_session,
+    save_session as persist_session,
+    delete_session,
+    conversation_history,
+)
+from core.pipeline import AssistantPipeline
 from core.ui import (
     background_data_url,
     esc,
@@ -32,11 +41,6 @@ from core.ui import (
     build_ragas_badges,
     extract_url_from_prompt,
     format_file_size,
-    session_path,
-    load_session,
-    save_session as persist_session,
-    delete_session,
-    conversation_history,
 )
 
 load_dotenv()
@@ -1900,8 +1904,6 @@ if user_input:
 
 
 if st.session_state.get("processing"):
-    import asyncio
-
     task = st.session_state.processing
     status = st.empty()
 
@@ -1917,69 +1919,54 @@ if st.session_state.get("processing"):
         status.markdown(render_indexing_status(label), unsafe_allow_html=True)
 
     try:
-        from core.rag import process_uploaded_files, process_url, run_agent_pipeline, get_qdrant_vector_store
+        session_dir = session_path(st.session_state.session_id)
 
-        if task.get("files") or task.get("url"):
-            if task.get("files"):
-                status.markdown(render_indexing_status("Reading uploaded files..."), unsafe_allow_html=True)
-                store, count = asyncio.run(process_uploaded_files(
-                    task["files"],
-                    existing_store=st.session_state.vector_store,
-                    persist_directory=str(session_path(st.session_state.session_id) / "qdrant_db"),
-                    progress_callback=indexing_progress,
-                ))
-                if store is not None:
-                    st.session_state.vector_store = store
-                if count:
-                    st.session_state.chunk_count += count
-                    st.session_state.uploaded_file_names.extend(file.name for file in task["files"])
-            if task.get("url"):
-                status.markdown(render_indexing_status(f"Fetching and scraping web page: {task['url']}"), unsafe_allow_html=True)
-                store, count = asyncio.run(process_url(
-                    task["url"], st.session_state.vector_store,
-                    persist_directory=str(session_path(st.session_state.session_id) / "qdrant_db"),
-                    progress_callback=indexing_progress,
-                ))
-                if store is not None:
-                    st.session_state.vector_store = store
-                if count:
-                    st.session_state.chunk_count += count
-                    st.session_state.ingested_urls.append(task["url"])
+        if task.get("files"):
+            status.markdown(render_indexing_status("Reading uploaded files..."), unsafe_allow_html=True)
+            store, count = AssistantPipeline.ingest_files(
+                task["files"],
+                session_dir=session_dir,
+                existing_store=st.session_state.vector_store,
+                on_progress=indexing_progress,
+            )
+            if store is not None:
+                st.session_state.vector_store = store
+            if count:
+                st.session_state.chunk_count += count
+                st.session_state.uploaded_file_names.extend(file.name for file in task["files"])
+
+        if task.get("url"):
+            status.markdown(render_indexing_status(f"Fetching and scraping web page: {task['url']}"), unsafe_allow_html=True)
+            store, count = AssistantPipeline.ingest_url(
+                task["url"],
+                session_dir=session_dir,
+                existing_store=st.session_state.vector_store,
+                on_progress=indexing_progress,
+            )
+            if store is not None:
+                st.session_state.vector_store = store
+            if count:
+                st.session_state.chunk_count += count
+                st.session_state.ingested_urls.append(task["url"])
+
         if task.get("prompt"):
-            if st.session_state.vector_store is None:
-                db_dir = session_path(st.session_state.session_id) / "qdrant_db"
-                if db_dir.exists():
-                    try:
-                        st.session_state.vector_store = get_qdrant_vector_store(str(db_dir))
-                    except Exception:
-                        pass
+            st.session_state.vector_store = AssistantPipeline.ensure_vector_store(
+                session_dir, st.session_state.vector_store
+            )
             status.markdown(render_reasoning(0), unsafe_allow_html=True)
-            history = [
-                {
-                    "role": message["role"],
-                    "content": message["content"],
-                    "files": message.get("files", []),
-                }
-                for message in st.session_state.messages[:-1]
-                if message.get("role") in {"user", "assistant"}
-            ]
-            history.append({
-                "role": "user",
-                "content": task["prompt"],
-                "files": st.session_state.messages[-1].get("files", []) if st.session_state.messages else [],
-            })
 
             def on_step(step_idx, _node_name):
                 status.markdown(render_reasoning(step_idx), unsafe_allow_html=True)
 
-            answer, metadata = asyncio.run(run_agent_pipeline(
-                st.session_state.vector_store,
-                history,
-                st.session_state.uploaded_file_names,
-                st.session_state.ingested_urls,
-                session_dir=str(session_path(st.session_state.session_id)),
+            answer, metadata = AssistantPipeline.query(
+                prompt=task["prompt"],
+                messages=st.session_state.messages,
+                vector_store=st.session_state.vector_store,
+                file_names=st.session_state.uploaded_file_names,
+                urls=st.session_state.ingested_urls,
+                session_dir=session_dir,
                 on_step=on_step,
-            ))
+            )
 
             status.empty()
             stream_text(answer, metadata, streaming_placeholder)
