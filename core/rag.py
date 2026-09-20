@@ -217,124 +217,28 @@ async def _invoke_llm(primary_llm, messages, tools=None):
 
 
 # ---------------------------------------------------------------------------
-# Document Loaders & Ingestion
+# Document Loaders & Ingestion (Delegated to deep core.ingestion module)
 # ---------------------------------------------------------------------------
 
-def _compute_file_hash(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+from core.ingestion import (
+    IngestionEngine,
+    compute_file_hash as _compute_file_hash,
+    load_file_hashes as _load_file_hashes,
+    save_file_hashes as _save_file_hashes,
+    enrich_chunks as _enrich_chunks,
+    load_documents,
+    load_url,
+    save_corpus as _save_corpus,
+)
 
 
 def _hash_file_path(persist_directory: str) -> Path:
-    return Path(persist_directory) / "file_hashes.json"
-
-
-def _load_file_hashes(persist_directory: str) -> dict[str, str]:
-    path = _hash_file_path(persist_directory)
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def _save_file_hashes(persist_directory: str, hashes: dict[str, str]) -> None:
-    path = _hash_file_path(persist_directory)
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
-    except OSError:
-        pass
-
-
-def _enrich_chunks(chunks: list[Document], source_name: str) -> list[Document]:
-    total = len(chunks)
-    doc_title = Path(source_name).stem.replace("_", " ").replace("-", " ")
-    for idx, chunk in enumerate(chunks):
-        chunk.metadata["chunk_index"] = idx
-        chunk.metadata["total_chunks"] = total
-        chunk.metadata["doc_title"] = doc_title
-        raw_page = chunk.metadata.get("page")
-        if isinstance(raw_page, int):
-            chunk.metadata["page_number"] = raw_page + 1
-        elif raw_page:
-            chunk.metadata["page_number"] = raw_page
-        else:
-            chunk.metadata["page_number"] = None
-    return chunks
-
-
-def load_documents(uploaded_files) -> list[Document]:
-    """Parse Streamlit uploaded files into Document objects."""
-    documents = []
-    for file in uploaded_files:
-        suffix = Path(file.name).suffix.lower()
-        content = file.getbuffer()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-
-        try:
-            if suffix == ".pdf":
-                from langchain_community.document_loaders import PyPDFLoader
-                docs = PyPDFLoader(tmp_path).load()
-            elif suffix == ".docx":
-                from langchain_community.document_loaders import Docx2txtLoader
-                docs = Docx2txtLoader(tmp_path).load()
-            elif suffix == ".csv":
-                from langchain_community.document_loaders import CSVLoader
-                docs = CSVLoader(tmp_path, encoding="utf-8").load()
-            elif suffix == ".pptx":
-                from langchain_community.document_loaders import UnstructuredPowerPointLoader
-                docs = UnstructuredPowerPointLoader(tmp_path).load()
-            else:
-                from langchain_community.document_loaders import TextLoader
-                docs = TextLoader(tmp_path, encoding="utf-8").load()
-
-            for doc in docs:
-                doc.metadata["source_name"] = file.name
-                doc.metadata["source_type"] = suffix.lstrip(".")
-            documents.extend(docs)
-        except Exception as exc:
-            logger.warning("Failed to parse %s: %s", file.name, exc)
-        finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
-    return documents
-
-
-def load_url(url: str) -> list[Document]:
-    """Scrape web page into Document objects."""
-    try:
-        from langchain_community.document_loaders import WebBaseLoader
-        loader = WebBaseLoader(url)
-        docs = loader.load()
-        for doc in docs:
-            doc.metadata["source_name"] = url
-            doc.metadata["source_type"] = "url"
-        return docs
-    except Exception as exc:
-        logger.warning("Failed to scrape URL %s: %s", url, exc)
-        return []
+    return IngestionEngine.hash_file_path(persist_directory)
 
 
 async def _batch_add_documents(vector_store, chunks: list[Document], batch_size: int = 50, progress_callback=None):
-    total = len(chunks)
-    for i in range(0, total, batch_size):
-        batch = chunks[i: i + batch_size]
-        await vector_store.aadd_documents(batch)
-        if progress_callback:
-            progress = min(0.4 + (i + len(batch)) / total * 0.5, 0.9)
-            progress_callback(progress, f"Indexed {min(i + len(batch), total)}/{total} chunks")
+    await IngestionEngine.batch_add_documents(vector_store, chunks, batch_size=batch_size, progress_callback=progress_callback)
 
-
-def _save_corpus(chunks: list[Document], persist_directory: str, append: bool = False) -> None:
-    corpus_file = Path(persist_directory) / "bm25_corpus.jsonl"
-    corpus_file.parent.mkdir(parents=True, exist_ok=True)
-    mode = "a" if append else "w"
-    with open(corpus_file, mode, encoding="utf-8") as f:
-        for chunk in chunks:
-            f.write(json.dumps({"text": chunk.page_content, "metadata": chunk.metadata}, ensure_ascii=False) + "\n")
 
 
 # ---------------------------------------------------------------------------
@@ -670,68 +574,16 @@ async def process_uploaded_files(
     progress_callback=None,
     force: bool = False,
 ):
-    file_hashes = _load_file_hashes(persist_directory) if not force else {}
-    files_to_process = []
-    skipped = 0
-
-    for uploaded_file in uploaded_files:
-        file_bytes = uploaded_file.getbuffer()
-        file_hash = _compute_file_hash(bytes(file_bytes))
-        if not force and uploaded_file.name in file_hashes:
-            if file_hashes[uploaded_file.name] == file_hash:
-                skipped += 1
-                continue
-        files_to_process.append((uploaded_file, file_hash))
-
-    if not files_to_process:
-        logger.info("No new documents to process (all duplicates)")
-        if existing_store is None:
-            existing_store = get_qdrant_vector_store(persist_directory, embedding=_get_embeddings())
-        return existing_store, 0
-
-    if progress_callback:
-        progress_callback(0.1, "Loading documents...")
-
-    all_documents = load_documents([f for f, _ in files_to_process])
-    if not all_documents:
-        return existing_store, 0
-
-    if progress_callback:
-        progress_callback(0.3, "Splitting into chunks...")
-
-    text_splitter = _get_text_splitter()
-    chunks = text_splitter.split_documents(all_documents)
-    chunks = [c for c in chunks if c.page_content.strip()]
-    if not chunks:
-        return existing_store, 0
-
-    by_source: dict[str, list[Document]] = defaultdict(list)
-    for chunk in chunks:
-        by_source[chunk.metadata.get("source_name", "unknown")].append(chunk)
-
-    enriched_chunks = []
-    for src_name, src_chunks in by_source.items():
-        enriched_chunks.extend(_enrich_chunks(src_chunks, src_name))
-    chunks = enriched_chunks
-
-    if progress_callback:
-        progress_callback(0.4, "Embedding chunks...")
-
-    embeddings = _get_embeddings()
-    if existing_store is None:
-        existing_store = get_qdrant_vector_store(persist_directory, embedding=embeddings)
-
-    await _batch_add_documents(existing_store, chunks, progress_callback=progress_callback)
-    _save_corpus(chunks, persist_directory, append=True)
-
-    for uploaded_file, file_hash in files_to_process:
-        file_hashes[uploaded_file.name] = file_hash
-    _save_file_hashes(persist_directory, file_hashes)
-
-    if progress_callback:
-        progress_callback(1.0, "Complete")
-
-    return existing_store, len(chunks)
+    return await IngestionEngine.ingest_files(
+        uploaded_files,
+        existing_store=existing_store,
+        persist_directory=persist_directory,
+        progress_callback=progress_callback,
+        force=force,
+        embeddings=_get_embeddings(),
+        vector_store_factory=get_qdrant_vector_store,
+        text_splitter=_get_text_splitter(),
+    )
 
 
 async def process_url(
@@ -740,26 +592,16 @@ async def process_url(
     persist_directory="./qdrant_db",
     progress_callback=None,
 ):
-    if progress_callback:
-        progress_callback(0.1, f"Fetching and scraping web page: {url}")
-    documents = load_url(url)
-    if not documents:
-        return existing_store, 0
+    return await IngestionEngine.ingest_url(
+        url,
+        existing_store=existing_store,
+        persist_directory=persist_directory,
+        progress_callback=progress_callback,
+        embeddings=_get_embeddings(),
+        vector_store_factory=get_qdrant_vector_store,
+        text_splitter=_get_text_splitter(),
+    )
 
-    text_splitter = _get_text_splitter()
-    chunks = text_splitter.split_documents(documents)
-    chunks = [c for c in chunks if c.page_content.strip()]
-    if not chunks:
-        return existing_store, 0
-
-    chunks = _enrich_chunks(chunks, url)
-    embeddings = _get_embeddings()
-    if existing_store is None:
-        existing_store = get_qdrant_vector_store(persist_directory, embedding=embeddings)
-
-    await _batch_add_documents(existing_store, chunks, progress_callback=progress_callback)
-    _save_corpus(chunks, persist_directory, append=True)
-    return existing_store, len(chunks)
 
 
 # ---------------------------------------------------------------------------
@@ -1160,47 +1002,9 @@ async def run_agent_pipeline(
     }
     return answer, metadata
 
+# ---------------------------------------------------------------------------
+# Evaluation Engine (Delegated to deep core.evaluation module)
+# ---------------------------------------------------------------------------
 
-def evaluate_ragas(question: str, answer: str, context: str, progress_callback=None) -> dict | None:
-    """Run Ragas evaluation using Groq."""
-    try:
-        from datasets import Dataset
-        from ragas import evaluate
-        from ragas.llms import LangchainLLMWrapper
-        from ragas.metrics import answer_relevancy, context_precision, faithfulness
+from core.evaluation import EvaluationEngine, evaluate_ragas
 
-        dataset = Dataset.from_dict({
-            "question": [question],
-            "answer": [answer],
-            "contexts": [[context]],
-            "ground_truth": [answer],
-        })
-
-        eval_llm = ChatGroq(
-            model=get_active_model_name(),
-            api_key=os.environ.get("GROQ_API_KEY"),
-            max_tokens=500,
-            temperature=0.0,
-        ) if os.environ.get("GROQ_API_KEY") else _get_fallback_llm()
-
-        if not eval_llm:
-            return None
-
-        llm_wrapper = LangchainLLMWrapper(eval_llm)
-        embeddings_wrapper = _get_embeddings()
-
-        faithfulness.llm = llm_wrapper
-        answer_relevancy.llm = llm_wrapper
-        answer_relevancy.embeddings = embeddings_wrapper
-        context_precision.llm = llm_wrapper
-
-        result = evaluate(
-            dataset,
-            metrics=[faithfulness, answer_relevancy, context_precision],
-            llm=llm_wrapper,
-            embeddings=embeddings_wrapper,
-        )
-        return {k: float(v) for k, v in result.items() if not np.isnan(v)}
-    except Exception as exc:
-        logger.warning("RAGAS evaluation failed: %s", exc)
-        return None

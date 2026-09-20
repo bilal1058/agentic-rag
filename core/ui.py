@@ -242,3 +242,10 @@ from core.session import (
     SESSIONS_DIR,
 )
 
+# ---------------------------------------------------------------------------
+# Theme Engine (Delegated to deep core.theme module)
+# ---------------------------------------------------------------------------
+
+from core.theme import ThemeEngine, inject_theme, get_theme_css
+
+
